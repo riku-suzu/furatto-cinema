@@ -27,23 +27,24 @@ export default function CinemasPage() {
     }
   }, []);
 
+  const [hasCoords, setHasCoords] = useState(!!coords);
+
   useEffect(() => {
-    // Try to get coords from session storage if context not populated
     if (!coords) {
-      const stored = sessionStorage.getItem("userCoords");
+      const stored = typeof window !== "undefined" ? sessionStorage.getItem("userCoords") : null;
       if (stored) {
         try {
           const parsed = JSON.parse(stored) as Coordinates;
+          setHasCoords(true);
           fetchCinemas(parsed, radius);
           return;
         } catch { /* ignore */ }
       }
       return;
     }
+    setHasCoords(true);
     fetchCinemas(coords, radius);
   }, [coords, radius, fetchCinemas]);
-
-  const hasCoords = coords || !!sessionStorage.getItem("userCoords");
 
   return (
     <div className="space-y-6">
