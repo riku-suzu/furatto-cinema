@@ -1,41 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --bg:        #0d0d0f;
-  --bg-card:   #18181b;
-  --bg-card2:  #1f1f23;
-  --border:    #2d2d33;
-  --border-red:#991b1b;
-  --red:       #dc2626;
-  --red-hover: #b91c1c;
-  --red-dim:   #7f1d1d;
-  --text:      #f4f4f5;
-  --text-sub:  #a1a1aa;
-  --text-muted:#52525b;
-  --gold:      #fbbf24;
+  --bg:         #111114;
+  --bg-card:    #1e1e22;
+  --bg-card2:   #26262c;
+  --border:     #38383f;
+  --red:        #e5373a;
+  --red-dark:   #b91c1e;
+  --text:       #f0f0f2;        /* ほぼ白 */
+  --text-sub:   #b8b8c2;        /* 明るいグレー */
+  --text-muted: #808090;        /* 中間グレー */
+  --gold:       #fbbf24;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, sans-serif;
 }
 
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* Film strip decoration */
-.film-strip {
-  background-image: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 20px,
-    var(--bg-card) 20px,
-    var(--bg-card) 28px
-  );
-}
+.scrollbar-hide::-webkit-scrollbar { display: none; }

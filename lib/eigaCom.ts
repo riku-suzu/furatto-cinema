@@ -97,15 +97,28 @@ export async function findTheaterUrl(
   return scored[0]?.score >= 0.4 ? scored[0].url : null;
 }
 
-/** "3月20日公開" → "2026-03-20" に変換 */
+/** "3月20日公開" → "2026-03-20" に変換。失敗時は最古（ソート末尾）*/
 function parseReleaseDate(text: string): string {
   const m = text.match(/(\d+)月(\d+)日公開/);
-  if (!m) return "9999-12-31";
+  if (!m) return "0000-01-01"; // 不明は末尾へ
   const now = new Date();
-  // 月が現在より前なら来年と判断
   const month = Number(m[1]);
   const year = month < now.getMonth() + 1 - 6 ? now.getFullYear() + 1 : now.getFullYear();
   return `${year}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+}
+
+/** "156分" → 156 */
+function parseRuntime(text: string): number {
+  const m = text.match(/(\d+)分/);
+  return m ? Number(m[1]) : 0;
+}
+
+/** "HH:MM" + 分数 → 終了時刻 "HH:MM" */
+function calcEndTime(startTime: string, runtimeMin: number): string {
+  if (!runtimeMin) return "";
+  const [h, m] = startTime.split(":").map(Number);
+  const total = h * 60 + m + runtimeMin;
+  return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
 /** "HH:MM" と対象日から、その上映が過去かどうか判定（JST基準） */
@@ -141,10 +154,12 @@ export async function scrapeSchedule(
     const posterPathMatch = posterMatch.match(/\/images\/movie\/\d+\/photo\/[^/]+\/\d+\.jpg/);
     const posterPath = posterPathMatch ? posterPathMatch[0] : undefined;
 
-    // 公開日を取得 (<p class="data"><span>3月20日公開</span>...)
-    const releaseText = $(section).find("p.data span").first().text()
-      || $(section).find(".data").first().text();
+    // 公開日・上映時間を取得 (<p class="data"><span>3月20日公開</span><span>156分</span>...)
+    const dataSpans = $(section).find("p.data span");
+    const releaseText = dataSpans.first().text() || $(section).find(".data").first().text();
     const releaseDate = parseReleaseDate(releaseText);
+    const runtimeText = dataSpans.eq(1).text() || "";
+    const runtime = parseRuntime(runtimeText);
 
     const movieScreenings: Screening[] = [];
 
@@ -191,7 +206,7 @@ export async function scrapeSchedule(
           movieTitle,
           posterPath,
           startTime,
-          endTime: "",
+          endTime: calcEndTime(startTime, runtime),
           screen: "",
           language,
           format: "2D",
