@@ -46,7 +46,7 @@ export default function CinemasPage() {
     fetchCinemas(coords, radius);
   }, [coords, radius, fetchCinemas]);
 
-  const RADII = [5000, 10000, 15000, 20000];
+  const RADII = [5000, 10000, 15000];
 
   return (
     <div className="space-y-6">
@@ -137,10 +137,7 @@ export default function CinemasPage() {
         <div className="text-center py-16 rounded-xl border" style={{ background: "#24242e", borderColor: "#3e3e50" }}>
           <div className="text-5xl mb-4">🎬</div>
           <h2 className="text-xl font-bold mb-2" style={{ color: "#f2f2f5" }}>映画館が見つかりませんでした</h2>
-          <p className="text-sm mb-4" style={{ color: "#c8c8d8" }}>検索範囲を広げてみてください</p>
-          <button onClick={() => setRadius(20000)} className="text-sm font-medium" style={{ color: "#e5373a" }}>
-            20km圏内で検索する
-          </button>
+          <p className="text-sm" style={{ color: "#c8c8d8" }}>検索範囲を広げてみてください</p>
         </div>
       )}
 

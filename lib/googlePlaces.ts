@@ -1,5 +1,11 @@
 import { Cinema, Coordinates } from "@/types";
 
+function cleanAddress(addr: string): string {
+  return addr
+    .replace(/^〒\d{3}-\d{4}\s*/u, "")  // 郵便番号を除去
+    .replace(/^日本[、,，\s]*/u, "");     // 先頭の「日本」を除去
+}
+
 export function getPhotoUrl(photoReference: string, maxWidth = 400): string {
   return `/api/places/photo?maxwidth=${maxWidth}&photoreference=${encodeURIComponent(photoReference)}`;
 }
@@ -62,7 +68,7 @@ export async function searchNearbyCinemas(
     return {
       id: place.place_id as string,
       name: place.name as string,
-      address: (place.vicinity as string) || "",
+      address: cleanAddress((place.vicinity as string) || ""),
       lat,
       lng,
       distance: calculateDistance(coords.lat, coords.lng, lat, lng),
@@ -92,7 +98,7 @@ export async function getCinemaDetails(placeId: string): Promise<Cinema | null> 
   return {
     id: place.place_id,
     name: place.name,
-    address: place.formatted_address || "",
+    address: cleanAddress(place.formatted_address || ""),
     lat: place.geometry.location.lat,
     lng: place.geometry.location.lng,
     rating: place.rating,
