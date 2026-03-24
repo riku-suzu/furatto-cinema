@@ -51,26 +51,26 @@ export default function CinemasPage() {
   return (
     <div className="space-y-6">
       {/* Title bar */}
-      <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b" style={{ borderColor: "#2d2d33" }}>
+      <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b" style={{ borderColor: "#3e3e50" }}>
         <div>
-          <h1 className="text-2xl font-black tracking-tight" style={{ color: "#f4f4f5" }}>周辺の映画館</h1>
+          <h1 className="text-2xl font-black tracking-tight" style={{ color: "#f2f2f5" }}>周辺の映画館</h1>
           {coords && (
-            <p className="text-xs mt-0.5" style={{ color: "#52525b" }}>
+            <p className="text-xs mt-0.5" style={{ color: "#9898ac" }}>
               {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
             </p>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: "#71717a" }}>検索範囲:</span>
+          <span className="text-xs" style={{ color: "#9898ac" }}>検索範囲:</span>
           {RADII.map((r) => (
             <button
               key={r}
               onClick={() => setRadius(r)}
               className="px-3 py-1 rounded-full text-xs font-semibold transition-all"
               style={{
-                background: radius === r ? "#dc2626" : "#1f1f23",
-                color: radius === r ? "#fff" : "#a1a1aa",
-                border: `1px solid ${radius === r ? "#dc2626" : "#2d2d33"}`,
+                background: radius === r ? "#e5373a" : "#2e2e3a",
+                color: radius === r ? "#fff" : "#c8c8d8",
+                border: `1px solid ${radius === r ? "#e5373a" : "#3e3e50"}`,
               }}
             >
               {r / 1000}km
@@ -81,15 +81,15 @@ export default function CinemasPage() {
 
       {/* No location */}
       {!hasCoords && !locLoading && (
-        <div className="text-center py-16 rounded-xl border" style={{ background: "#18181b", borderColor: "#2d2d33" }}>
+        <div className="text-center py-16 rounded-xl border" style={{ background: "#24242e", borderColor: "#3e3e50" }}>
           <div className="text-5xl mb-4">📍</div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: "#f4f4f5" }}>位置情報が必要です</h2>
-          <p className="mb-6 text-sm" style={{ color: "#71717a" }}>周辺の映画館を検索するために現在地を取得します</p>
+          <h2 className="text-xl font-bold mb-2" style={{ color: "#f2f2f5" }}>位置情報が必要です</h2>
+          <p className="mb-6 text-sm" style={{ color: "#c8c8d8" }}>周辺の映画館を検索するために現在地を取得します</p>
           <button
             onClick={requestLocation}
             disabled={locLoading}
             className="font-bold px-6 py-3 rounded-full transition-colors text-sm"
-            style={{ background: "#dc2626", color: "#fff" }}
+            style={{ background: "#e5373a", color: "#fff" }}
           >
             現在地を取得する
           </button>
@@ -102,11 +102,11 @@ export default function CinemasPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="rounded-xl overflow-hidden border animate-pulse"
-              style={{ background: "#18181b", borderColor: "#2d2d33" }}>
-              <div className="h-36" style={{ background: "#27272a" }} />
+              style={{ background: "#24242e", borderColor: "#3e3e50" }}>
+              <div className="h-36" style={{ background: "#2e2e3a" }} />
               <div className="p-4 space-y-2">
-                <div className="h-4 rounded w-3/4" style={{ background: "#27272a" }} />
-                <div className="h-3 rounded" style={{ background: "#27272a" }} />
+                <div className="h-4 rounded w-3/4" style={{ background: "#2e2e3a" }} />
+                <div className="h-3 rounded" style={{ background: "#2e2e3a" }} />
               </div>
             </div>
           ))}
@@ -123,7 +123,7 @@ export default function CinemasPage() {
       {/* Results */}
       {!loading && cinemas.length > 0 && (
         <>
-          <p className="text-xs" style={{ color: "#52525b" }}>{cinemas.length}件の映画館が見つかりました</p>
+          <p className="text-xs" style={{ color: "#9898ac" }}>{cinemas.length}件の映画館が見つかりました</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {cinemas.map((cinema) => (
               <CinemaCard key={cinema.id} cinema={cinema} />
@@ -134,20 +134,20 @@ export default function CinemasPage() {
 
       {/* No results */}
       {!loading && hasCoords && cinemas.length === 0 && !error && (
-        <div className="text-center py-16 rounded-xl border" style={{ background: "#18181b", borderColor: "#2d2d33" }}>
+        <div className="text-center py-16 rounded-xl border" style={{ background: "#24242e", borderColor: "#3e3e50" }}>
           <div className="text-5xl mb-4">🎬</div>
-          <h2 className="text-xl font-bold mb-2" style={{ color: "#f4f4f5" }}>映画館が見つかりませんでした</h2>
-          <p className="text-sm mb-4" style={{ color: "#71717a" }}>検索範囲を広げてみてください</p>
-          <button onClick={() => setRadius(20000)} className="text-sm font-medium" style={{ color: "#dc2626" }}>
+          <h2 className="text-xl font-bold mb-2" style={{ color: "#f2f2f5" }}>映画館が見つかりませんでした</h2>
+          <p className="text-sm mb-4" style={{ color: "#c8c8d8" }}>検索範囲を広げてみてください</p>
+          <button onClick={() => setRadius(20000)} className="text-sm font-medium" style={{ color: "#e5373a" }}>
             20km圏内で検索する
           </button>
         </div>
       )}
 
       <div className="text-center pt-2">
-        <Link href="/" className="text-sm transition-colors" style={{ color: "#52525b" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#dc2626")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#52525b")}>
+        <Link href="/" className="text-sm transition-colors" style={{ color: "#9898ac" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "#e5373a")}
+          onMouseLeave={e => (e.currentTarget.style.color = "#9898ac")}>
           ← トップに戻る
         </Link>
       </div>

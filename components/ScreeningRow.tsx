@@ -31,9 +31,9 @@ export default function ScreeningRow({ screening }: ScreeningRowProps) {
 
   const inner = (
     <div className="flex items-center gap-3 px-4 py-3 border-b transition-colors"
-      style={{ borderColor: "#26262c", opacity: dimmed ? 0.5 : 1 }}>
+      style={{ borderColor: "#2e2e3a", opacity: dimmed ? 0.5 : 1 }}>
       {/* Poster */}
-      <div className="relative w-8 h-12 flex-shrink-0 rounded overflow-hidden" style={{ background: "#26262c" }}>
+      <div className="relative w-8 h-12 flex-shrink-0 rounded overflow-hidden" style={{ background: "#2e2e3a" }}>
         {screening.posterPath && !screening.posterPath.startsWith("/images/movie/") ? (
           <Image src={getPosterUrl(screening.posterPath, "w92")} alt={screening.movieTitle} fill className="object-cover" unoptimized />
         ) : (

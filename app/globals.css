@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --bg:         #111114;
-  --bg-card:    #1e1e22;
-  --bg-card2:   #26262c;
-  --border:     #38383f;
+  --bg:         #1a1a22;        /* 少し明るい紺黒 */
+  --bg-card:    #24242e;        /* カード背景 */
+  --bg-card2:   #2e2e3a;        /* やや明るいカード */
+  --border:     #3e3e50;        /* ボーダー */
   --red:        #e5373a;
   --red-dark:   #b91c1e;
-  --text:       #f0f0f2;        /* ほぼ白 */
-  --text-sub:   #b8b8c2;        /* 明るいグレー */
-  --text-muted: #808090;        /* 中間グレー */
+  --text:       #f2f2f5;        /* 白に近い */
+  --text-sub:   #c8c8d8;        /* 明るいグレー（視認性UP） */
+  --text-muted: #9898ac;        /* 中間グレー（視認性UP） */
   --gold:       #fbbf24;
 }
 

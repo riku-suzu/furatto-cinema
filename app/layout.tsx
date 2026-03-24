@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ja">
-      <body className={`${geist.className} bg-gray-50 min-h-screen`}>
+      <body className={`${geist.className} min-h-screen`} style={{ background: "#1a1a22", color: "#f2f2f5" }}>
         <FavoritesProvider>
           <LocationProvider>
             <Header />

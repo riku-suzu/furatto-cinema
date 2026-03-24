@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useLocation } from "@/contexts/LocationContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import FavoriteButton from "@/components/FavoriteButton";
+import CurtainTransition from "@/components/CurtainTransition";
 
 export default function TopPage() {
   const { coords, loading, error, requestLocation } = useLocation();
@@ -19,20 +20,20 @@ export default function TopPage() {
       {/* Hero */}
       <section className="text-center pt-14 pb-10 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full opacity-[0.06]"
+          <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full opacity-[0.08]"
             style={{ background: "radial-gradient(circle, #e5373a, transparent)" }} />
-          <div className="absolute -bottom-20 -right-10 w-96 h-96 rounded-full opacity-[0.06]"
+          <div className="absolute -bottom-20 -right-10 w-96 h-96 rounded-full opacity-[0.08]"
             style={{ background: "radial-gradient(circle, #e5373a, transparent)" }} />
         </div>
         <div className="relative">
           <p className="text-xs font-bold tracking-widest uppercase mb-4" style={{ color: "#e5373a" }}>
             Now Showing Near You
           </p>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-5 leading-tight" style={{ color: "#f0f0f2" }}>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-5 leading-tight" style={{ color: "#f2f2f5" }}>
             周辺の映画館を<br />
             <span style={{ color: "#e5373a" }}>すぐに探せる</span>
           </h1>
-          <p className="text-base mb-10 max-w-md mx-auto" style={{ color: "#b8b8c2" }}>
+          <p className="text-base mb-10 max-w-md mx-auto" style={{ color: "#c8c8d8" }}>
             現在地から半径15km圏内の映画館と上映スケジュールを一覧表示
           </p>
 
@@ -66,11 +67,11 @@ export default function TopPage() {
           ) : (
             <div className="flex flex-col items-center gap-3">
               <p className="text-sm font-medium" style={{ color: "#4ade80" }}>✓ 現在地を取得しました</p>
-              <Link href="/cinemas"
+              <CurtainTransition href="/cinemas"
                 className="inline-flex items-center gap-2 font-bold px-10 py-4 rounded-full text-lg text-white transition-opacity hover:opacity-85"
                 style={{ background: "#e5373a" }}>
                 周辺の映画館を見る →
-              </Link>
+              </CurtainTransition>
             </div>
           )}
         </div>
@@ -80,21 +81,21 @@ export default function TopPage() {
       {favorites.length > 0 && (
         <section>
           <h2 className="text-sm font-bold tracking-widest uppercase mb-4 flex items-center gap-2"
-            style={{ color: "#b8b8c2" }}>
+            style={{ color: "#c8c8d8" }}>
             <span style={{ color: "#fbbf24" }}>★</span> お気に入り映画館
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {favorites.map((cinema) => (
               <Link key={cinema.id} href={`/cinemas/${cinema.id}`}
                 className="flex items-center justify-between p-4 rounded-xl border transition-all group"
-                style={{ background: "#1e1e22", borderColor: "#38383f" }}
+                style={{ background: "#24242e", borderColor: "#3e3e50" }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = "#e5373a")}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = "#38383f")}>
+                onMouseLeave={e => (e.currentTarget.style.borderColor = "#3e3e50")}>
                 <div className="min-w-0">
-                  <p className="font-semibold truncate group-hover:text-red-400 transition-colors" style={{ color: "#f0f0f2" }}>
+                  <p className="font-semibold truncate group-hover:text-red-400 transition-colors" style={{ color: "#f2f2f5" }}>
                     {cinema.name}
                   </p>
-                  <p className="text-xs truncate mt-0.5" style={{ color: "#808090" }}>{cinema.address}</p>
+                  <p className="text-xs truncate mt-0.5" style={{ color: "#9898ac" }}>{cinema.address}</p>
                 </div>
                 <FavoriteButton cinema={cinema} className="ml-3 flex-shrink-0" />
               </Link>
@@ -104,7 +105,7 @@ export default function TopPage() {
       )}
 
       {/* Features */}
-      <section className="border-t pt-10" style={{ borderColor: "#38383f" }}>
+      <section className="border-t pt-10" style={{ borderColor: "#3e3e50" }}>
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
           {[
             { icon: "📍", title: "現在地から検索", desc: "GPSで半径15km圏内の映画館を自動検索します" },
@@ -113,8 +114,8 @@ export default function TopPage() {
           ].map((f) => (
             <div key={f.title}>
               <div className="text-3xl mb-3">{f.icon}</div>
-              <dt className="font-bold mb-1" style={{ color: "#f0f0f2" }}>{f.title}</dt>
-              <dd className="text-sm" style={{ color: "#b8b8c2" }}>{f.desc}</dd>
+              <dt className="font-bold mb-1" style={{ color: "#f2f2f5" }}>{f.title}</dt>
+              <dd className="text-sm" style={{ color: "#c8c8d8" }}>{f.desc}</dd>
             </div>
           ))}
         </dl>
