@@ -256,9 +256,7 @@ export default function CinemaDetailPage({ params }: PageProps) {
       )}
 
       <div className="text-center pt-2">
-        <Link href="/cinemas" className="text-sm transition-colors" style={{ color: "#52525b" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#dc2626")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#52525b")}>
+        <Link href="/cinemas" className="text-sm transition-colors text-[#9898ac] hover:text-[#e5373a]">
           ← 映画館一覧に戻る
         </Link>
       </div>
