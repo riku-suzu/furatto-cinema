@@ -81,7 +81,7 @@ export async function searchNearbyCinemas(
           : undefined,
       };
     })
-    .filter((c) => (c.distance ?? Infinity) <= radiusKm);
+    .filter((c: { distance?: number }) => (c.distance ?? Infinity) <= radiusKm);
 }
 
 export async function getCinemaDetails(placeId: string): Promise<Cinema | null> {
