@@ -12,53 +12,60 @@ interface CinemaCardProps {
 export default function CinemaCard({ cinema }: CinemaCardProps) {
   return (
     <Link href={`/cinemas/${cinema.id}`} className="block group">
-      <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 group-hover:-translate-y-1">
+      <div
+        className="rounded-xl overflow-hidden border transition-all duration-300"
+        style={{ background: "#18181b", borderColor: "#2d2d33" }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLDivElement).style.borderColor = "#dc2626";
+          (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLDivElement).style.borderColor = "#2d2d33";
+          (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+        }}
+      >
         {/* Photo */}
-        <div className="relative h-36 bg-gradient-to-br from-indigo-100 to-purple-100">
+        <div className="relative h-36" style={{ background: "#111113" }}>
           {cinema.photoUrl ? (
-            <Image
-              src={cinema.photoUrl}
-              alt={cinema.name}
-              fill
-              className="object-cover"
-              unoptimized
-            />
+            <Image src={cinema.photoUrl} alt={cinema.name} fill className="object-cover opacity-80" unoptimized />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-5xl opacity-30">🎬</span>
+              <span className="text-5xl opacity-10">🎬</span>
             </div>
           )}
+          {/* Red gradient overlay */}
+          <div className="absolute inset-0"
+            style={{ background: "linear-gradient(to top, #18181b 0%, transparent 60%)" }} />
           <div className="absolute top-2 right-2">
             <FavoriteButton cinema={cinema} />
           </div>
+          {cinema.distance !== undefined && (
+            <div className="absolute bottom-2 left-2">
+              <span className="text-xs font-bold px-2 py-0.5 rounded"
+                style={{ background: "#dc2626", color: "#fff" }}>
+                {cinema.distance < 1
+                  ? `${Math.round(cinema.distance * 1000)}m`
+                  : `${cinema.distance.toFixed(1)}km`}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Info */}
         <div className="p-4">
-          <h3 className="font-bold text-gray-900 text-base leading-tight mb-1 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+          <h3 className="font-bold text-sm leading-tight mb-1 line-clamp-2 transition-colors group-hover:text-red-400"
+            style={{ color: "#f4f4f5" }}>
             {cinema.name}
           </h3>
-          <p className="text-xs text-gray-500 line-clamp-2 mb-3">{cinema.address}</p>
+          <p className="text-xs line-clamp-1 mb-3" style={{ color: "#52525b" }}>{cinema.address}</p>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {cinema.distance !== undefined && (
-                <span className="inline-flex items-center gap-1 text-xs font-medium bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {cinema.distance < 1
-                    ? `${Math.round(cinema.distance * 1000)}m`
-                    : `${cinema.distance.toFixed(1)}km`}
-                </span>
-              )}
-              {cinema.rating && (
-                <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-50 text-amber-700 px-2 py-1 rounded-full">
-                  ★ {cinema.rating.toFixed(1)}
-                </span>
-              )}
-            </div>
-            <span className="text-xs text-indigo-500 font-medium group-hover:underline">
+            {cinema.rating ? (
+              <span className="text-xs font-semibold" style={{ color: "#fbbf24" }}>
+                ★ {cinema.rating.toFixed(1)}
+              </span>
+            ) : <span />}
+            <span className="text-xs font-medium transition-colors group-hover:text-red-400"
+              style={{ color: "#71717a" }}>
               スケジュール →
             </span>
           </div>

@@ -12,7 +12,7 @@ export default function CinemasPage() {
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [radius, setRadius] = useState(10000); // meters
+  const [radius, setRadius] = useState(15000);
 
   const fetchCinemas = useCallback(async (c: Coordinates, r: number) => {
     setLoading(true);
@@ -46,31 +46,32 @@ export default function CinemasPage() {
     fetchCinemas(coords, radius);
   }, [coords, radius, fetchCinemas]);
 
+  const RADII = [5000, 10000, 15000, 20000];
+
   return (
     <div className="space-y-6">
       {/* Title bar */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b" style={{ borderColor: "#2d2d33" }}>
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">周辺の映画館</h1>
+          <h1 className="text-2xl font-black tracking-tight" style={{ color: "#f4f4f5" }}>周辺の映画館</h1>
           {coords && (
-            <p className="text-sm text-gray-400 mt-0.5">
-              現在地: {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+            <p className="text-xs mt-0.5" style={{ color: "#52525b" }}>
+              {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
             </p>
           )}
         </div>
-
-        {/* Radius selector */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">検索範囲:</span>
-          {[5000, 10000].map((r) => (
+          <span className="text-xs" style={{ color: "#71717a" }}>検索範囲:</span>
+          {RADII.map((r) => (
             <button
               key={r}
               onClick={() => setRadius(r)}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                radius === r
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              className="px-3 py-1 rounded-full text-xs font-semibold transition-all"
+              style={{
+                background: radius === r ? "#dc2626" : "#1f1f23",
+                color: radius === r ? "#fff" : "#a1a1aa",
+                border: `1px solid ${radius === r ? "#dc2626" : "#2d2d33"}`,
+              }}
             >
               {r / 1000}km
             </button>
@@ -80,31 +81,32 @@ export default function CinemasPage() {
 
       {/* No location */}
       {!hasCoords && !locLoading && (
-        <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div className="text-center py-16 rounded-xl border" style={{ background: "#18181b", borderColor: "#2d2d33" }}>
           <div className="text-5xl mb-4">📍</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">位置情報が必要です</h2>
-          <p className="text-gray-500 mb-6">周辺の映画館を検索するために現在地を取得します</p>
+          <h2 className="text-xl font-bold mb-2" style={{ color: "#f4f4f5" }}>位置情報が必要です</h2>
+          <p className="mb-6 text-sm" style={{ color: "#71717a" }}>周辺の映画館を検索するために現在地を取得します</p>
           <button
             onClick={requestLocation}
             disabled={locLoading}
-            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+            className="font-bold px-6 py-3 rounded-full transition-colors text-sm"
+            style={{ background: "#dc2626", color: "#fff" }}
           >
             現在地を取得する
           </button>
-          {locError && <p className="text-red-500 text-sm mt-3">{locError}</p>}
+          {locError && <p className="text-sm mt-3" style={{ color: "#fca5a5" }}>{locError}</p>}
         </div>
       )}
 
-      {/* Loading */}
+      {/* Loading skeleton */}
       {(loading || locLoading) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100 animate-pulse">
-              <div className="h-36 bg-gray-100" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-xl overflow-hidden border animate-pulse"
+              style={{ background: "#18181b", borderColor: "#2d2d33" }}>
+              <div className="h-36" style={{ background: "#27272a" }} />
               <div className="p-4 space-y-2">
-                <div className="h-4 bg-gray-100 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 rounded w-full" />
-                <div className="h-3 bg-gray-100 rounded w-1/2" />
+                <div className="h-4 rounded w-3/4" style={{ background: "#27272a" }} />
+                <div className="h-3 rounded" style={{ background: "#27272a" }} />
               </div>
             </div>
           ))}
@@ -113,7 +115,7 @@ export default function CinemasPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+        <div className="rounded-xl p-4 text-sm border" style={{ background: "#450a0a", borderColor: "#991b1b", color: "#fca5a5" }}>
           {error}
         </div>
       )}
@@ -121,8 +123,8 @@ export default function CinemasPage() {
       {/* Results */}
       {!loading && cinemas.length > 0 && (
         <>
-          <p className="text-sm text-gray-500">{cinemas.length}件の映画館が見つかりました</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <p className="text-xs" style={{ color: "#52525b" }}>{cinemas.length}件の映画館が見つかりました</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {cinemas.map((cinema) => (
               <CinemaCard key={cinema.id} cinema={cinema} />
             ))}
@@ -132,21 +134,20 @@ export default function CinemasPage() {
 
       {/* No results */}
       {!loading && hasCoords && cinemas.length === 0 && !error && (
-        <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div className="text-center py-16 rounded-xl border" style={{ background: "#18181b", borderColor: "#2d2d33" }}>
           <div className="text-5xl mb-4">🎬</div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">映画館が見つかりませんでした</h2>
-          <p className="text-gray-500 mb-4">検索範囲を広げてみてください</p>
-          <button
-            onClick={() => setRadius(20000)}
-            className="text-indigo-600 font-medium hover:underline"
-          >
+          <h2 className="text-xl font-bold mb-2" style={{ color: "#f4f4f5" }}>映画館が見つかりませんでした</h2>
+          <p className="text-sm mb-4" style={{ color: "#71717a" }}>検索範囲を広げてみてください</p>
+          <button onClick={() => setRadius(20000)} className="text-sm font-medium" style={{ color: "#dc2626" }}>
             20km圏内で検索する
           </button>
         </div>
       )}
 
-      <div className="text-center">
-        <Link href="/" className="text-sm text-indigo-500 hover:underline">
+      <div className="text-center pt-2">
+        <Link href="/" className="text-sm transition-colors" style={{ color: "#52525b" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "#dc2626")}
+          onMouseLeave={e => (e.currentTarget.style.color = "#52525b")}>
           ← トップに戻る
         </Link>
       </div>

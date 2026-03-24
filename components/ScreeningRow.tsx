@@ -8,93 +8,88 @@ interface ScreeningRowProps {
 }
 
 export default function ScreeningRow({ screening }: ScreeningRowProps) {
-  const isSoldOut =
-    !screening.isPast &&
-    screening.availableSeats === 0 &&
-    screening.totalSeats !== undefined;
+  const isSoldOut = !screening.isPast && screening.availableSeats === 0 && screening.totalSeats !== undefined;
 
-  const seats = (() => {
-    if (screening.isPast) return { label: "上映終了", color: "text-gray-400" };
-    if (screening.availableSeats !== undefined && screening.totalSeats)
-      return getSeatsStatus(screening.availableSeats, screening.totalSeats);
+  const status = (() => {
+    if (screening.isPast) return { label: "上映終了", color: "#52525b" };
+    if (screening.availableSeats !== undefined && screening.totalSeats) {
+      const s = getSeatsStatus(screening.availableSeats, screening.totalSeats);
+      const colorMap: Record<string, string> = {
+        "text-emerald-600": "#22c55e",
+        "text-amber-600": "#f59e0b",
+        "text-red-600": "#ef4444",
+        "text-gray-500": "#71717a",
+      };
+      return { label: s.label, color: colorMap[s.color] ?? "#71717a" };
+    }
     return null;
   })();
 
-  const content = (
+  const isClickable = !!screening.ticketUrl && !isSoldOut && !screening.isPast;
+
+  const inner = (
     <div
-      className={`flex items-center gap-4 p-3 rounded-xl transition-colors border border-transparent ${
-        isSoldOut
-          ? "opacity-50"
-          : screening.ticketUrl
-          ? "hover:bg-indigo-50 hover:border-indigo-100 cursor-pointer"
-          : "hover:bg-gray-50 hover:border-gray-100"
-      }`}
+      className="flex items-center gap-3 px-4 py-3 border-b transition-colors"
+      style={{
+        borderColor: "#1f1f23",
+        opacity: screening.isPast ? 0.45 : 1,
+        background: isClickable ? undefined : "transparent",
+      }}
     >
       {/* Poster */}
-      <div className="relative w-10 h-14 flex-shrink-0 rounded overflow-hidden bg-gray-100">
+      <div className="relative w-8 h-12 flex-shrink-0 rounded overflow-hidden" style={{ background: "#27272a" }}>
         {screening.posterPath && !screening.posterPath.startsWith("/images/movie/") ? (
-          <Image
-            src={getPosterUrl(screening.posterPath, "w92")}
-            alt={screening.movieTitle}
-            fill
-            className="object-cover"
-            unoptimized
-          />
+          <Image src={getPosterUrl(screening.posterPath, "w92")} alt={screening.movieTitle} fill className="object-cover" unoptimized />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-300 text-lg">
-            🎬
-          </div>
+          <div className="absolute inset-0 flex items-center justify-center text-xs" style={{ color: "#52525b" }}>🎬</div>
         )}
       </div>
 
       {/* Time */}
-      <div className="text-center flex-shrink-0 w-20">
-        <p className="text-lg font-bold text-gray-900">{screening.startTime}</p>
+      <div className="flex-shrink-0 w-16 text-center">
+        <p className="text-base font-black" style={{ color: screening.isPast ? "#52525b" : "#f4f4f5" }}>
+          {screening.startTime}
+        </p>
         {screening.endTime && (
-          <p className="text-xs text-gray-400">{screening.endTime} 終</p>
+          <p className="text-xs" style={{ color: "#52525b" }}>{screening.endTime}終</p>
         )}
       </div>
 
-      {/* Movie info */}
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-gray-800 text-sm leading-tight truncate">
-          {screening.movieTitle}
-        </p>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          {screening.screen && (
-            <span className="text-xs text-gray-500">{screening.screen}</span>
-          )}
-          {screening.format && (
-            <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-              {screening.format}
-            </span>
-          )}
-          {screening.language && (
-            <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded">
-              {screening.language}
-            </span>
-          )}
-        </div>
+      {/* Labels */}
+      <div className="flex items-center gap-1.5 flex-1 flex-wrap">
+        {screening.language && (
+          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "#1e3a5f", color: "#93c5fd" }}>
+            {screening.language}
+          </span>
+        )}
+        {screening.format && screening.format !== "2D" && (
+          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "#1c1917", color: "#d6d3d1" }}>
+            {screening.format}
+          </span>
+        )}
       </div>
 
-      {/* Right side */}
-      <div className="text-right flex-shrink-0">
-        {seats ? (
-          <span className={`text-xs font-medium ${seats.color}`}>{seats.label}</span>
-        ) : screening.ticketUrl ? (
-          <span className="text-xs font-medium text-indigo-600">チケット購入 →</span>
+      {/* Status / ticket */}
+      <div className="flex-shrink-0 text-right">
+        {status ? (
+          <span className="text-xs font-semibold" style={{ color: status.color }}>{status.label}</span>
+        ) : isClickable ? (
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#dc2626", color: "#fff" }}>
+            購入 →
+          </span>
         ) : null}
       </div>
     </div>
   );
 
-  if (screening.ticketUrl && !isSoldOut) {
+  if (isClickable) {
     return (
-      <a href={screening.ticketUrl} target="_blank" rel="noopener noreferrer">
-        {content}
+      <a href={screening.ticketUrl} target="_blank" rel="noopener noreferrer"
+        className="block hover:bg-zinc-800 transition-colors" style={{ textDecoration: "none" }}>
+        {inner}
       </a>
     );
   }
 
-  return content;
+  return <div>{inner}</div>;
 }

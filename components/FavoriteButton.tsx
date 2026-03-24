@@ -14,18 +14,11 @@ export default function FavoriteButton({ cinema, className = "" }: FavoriteButto
 
   return (
     <button
-      onClick={(e) => {
-        e.stopPropagation();
-        toggleFavorite(cinema);
-      }}
+      onClick={(e) => { e.stopPropagation(); e.preventDefault(); toggleFavorite(cinema); }}
       aria-label={fav ? "お気に入りから削除" : "お気に入りに追加"}
       className={`transition-transform hover:scale-110 active:scale-95 ${className}`}
     >
-      <span
-        className={`text-2xl ${fav ? "text-yellow-400" : "text-gray-300 hover:text-yellow-300"}`}
-      >
-        ★
-      </span>
+      <span style={{ fontSize: "1.25rem", color: fav ? "#fbbf24" : "#3f3f46" }}>★</span>
     </button>
   );
 }
