@@ -60,37 +60,28 @@ export async function searchNearbyCinemas(
     );
   });
 
-  const cinemas = results.map((place: Record<string, unknown>) => {
-    const geometry = place.geometry as { location: { lat: number; lng: number } };
-    const photos = place.photos as Array<{ photo_reference: string }> | undefined;
-    const lat = geometry.location.lat;
-    const lng = geometry.location.lng;
-    return {
-      id: place.place_id as string,
-      name: place.name as string,
-      address: cleanAddress((place.vicinity as string) || ""),
-      lat,
-      lng,
-      distance: calculateDistance(coords.lat, coords.lng, lat, lng),
-      rating: place.rating as number | undefined,
-      photoUrl: photos?.[0]
-        ? getPhotoUrl(photos[0].photo_reference)
-        : undefined,
-    };
-  });
+  const radiusKm = radiusMeters / 1000;
 
-  // 日本語文字を含まない名前はDetails APIで日本語名を再取得
-  const hasJapanese = (s: string) => /[\u3000-\u9fff\uff00-\uffef]/u.test(s);
-  return Promise.all(
-    cinemas.map(async (cinema) => {
-      if (hasJapanese(cinema.name)) return cinema;
-      const details = await getCinemaDetails(cinema.id);
-      if (details && hasJapanese(details.name)) {
-        return { ...cinema, name: details.name };
-      }
-      return cinema;
+  return results
+    .map((place: Record<string, unknown>) => {
+      const geometry = place.geometry as { location: { lat: number; lng: number } };
+      const photos = place.photos as Array<{ photo_reference: string }> | undefined;
+      const lat = geometry.location.lat;
+      const lng = geometry.location.lng;
+      return {
+        id: place.place_id as string,
+        name: place.name as string,
+        address: cleanAddress((place.vicinity as string) || ""),
+        lat,
+        lng,
+        distance: calculateDistance(coords.lat, coords.lng, lat, lng),
+        rating: place.rating as number | undefined,
+        photoUrl: photos?.[0]
+          ? getPhotoUrl(photos[0].photo_reference)
+          : undefined,
+      };
     })
-  );
+    .filter((c) => (c.distance ?? Infinity) <= radiusKm);
 }
 
 export async function getCinemaDetails(placeId: string): Promise<Cinema | null> {

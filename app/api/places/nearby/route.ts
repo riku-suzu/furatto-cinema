@@ -20,23 +20,16 @@ export async function GET(req: NextRequest) {
     key: API_KEY,
   });
 
-  const allResults: unknown[] = [];
-
   const first = await fetchPage(params);
-  allResults.push(...(first.results || []));
+  const allResults: unknown[] = [...(first.results || [])];
 
+  // rankby=distance は距離順なので、1ページ目(最大20件)で通常は十分。
+  // next_page_token がある場合のみ2ページ目を取得（最大40件）。3ページ目は取得しない。
   if (first.next_page_token) {
     await new Promise((r) => setTimeout(r, 2000));
     const p2 = new URLSearchParams({ pagetoken: first.next_page_token, key: API_KEY });
     const second = await fetchPage(p2);
     allResults.push(...(second.results || []));
-
-    if (second.next_page_token) {
-      await new Promise((r) => setTimeout(r, 2000));
-      const p3 = new URLSearchParams({ pagetoken: second.next_page_token, key: API_KEY });
-      const third = await fetchPage(p3);
-      allResults.push(...(third.results || []));
-    }
   }
 
   return NextResponse.json({ results: allResults });
