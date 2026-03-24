@@ -37,28 +37,21 @@ export async function searchNearbyCinemas(
 
   const data = await res.json();
 
-  // 映画館以外を除外するキーワード
-  const EXCLUDE_KEYWORDS = [
-    "美術館", "博物館", "アートセンター", "文化センター", "市民会館",
-    "カフェ", "レストラン", "ホテル", "スタジオ", "ギャラリー",
-    "図書館", "公民館", "ホール", "劇場", "バー", "居酒屋",
-    "映像館", "視聴覚", "文化会館", "市民ホール", "区民ホール",
-    "アルテリオ", "生涯学習", "コミュニティ",
-  ];
+  // ホワイトリスト方式: 映画館キーワードを含むものだけ通す
   const CINEMA_KEYWORDS = [
-    "シネマ", "映画", "シアター", "cinema", "theater", "theatre",
-    "IMAX", "イオン", "TOHO", "TOHOシネマ", "109", "ユナイテッド",
-    "ムービックス", "ミッドランド", "フォーラム", "ピカデリー",
+    "シネマ", "映画館", "映画", "シアター", "スクリーン",
+    "cinema", "theater", "theatre", "screen",
+    "TOHO", "toho", "イオンシネマ", "109シネマ", "ユナイテッドシネマ",
+    "ムービックス", "ミッドランドスクエア", "フォーラム", "ピカデリー",
+    "バルト", "ヒューマントラスト", "新宿武蔵野", "テアトル",
+    "チネチッタ", "チネ", "キノ", "kino", "シネクイント",
   ];
 
   const results = (data.results || []).filter((place: Record<string, unknown>) => {
     const name = (place.name as string) || "";
-    // 除外キーワードにマッチ かつ 映画館キーワードを含まない場合は除外
-    const hasExclude = EXCLUDE_KEYWORDS.some((kw) => name.includes(kw));
-    const hasCinema = CINEMA_KEYWORDS.some((kw) =>
+    return CINEMA_KEYWORDS.some((kw) =>
       name.toLowerCase().includes(kw.toLowerCase())
     );
-    return !hasExclude || hasCinema;
   });
 
   return results.map((place: Record<string, unknown>) => {

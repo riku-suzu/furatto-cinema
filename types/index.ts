@@ -32,6 +32,7 @@ export interface Screening {
   language?: string;
   format?: string; // "2D", "3D", "IMAX"
   ticketUrl?: string;
+  isPast?: boolean; // 上映時間が過去かどうか
 }
 
 export interface CinemaSchedule {

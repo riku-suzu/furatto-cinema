@@ -8,12 +8,17 @@ interface ScreeningRowProps {
 }
 
 export default function ScreeningRow({ screening }: ScreeningRowProps) {
-  const seats =
-    screening.availableSeats !== undefined && screening.totalSeats
-      ? getSeatsStatus(screening.availableSeats, screening.totalSeats)
-      : null;
+  const isSoldOut =
+    !screening.isPast &&
+    screening.availableSeats === 0 &&
+    screening.totalSeats !== undefined;
 
-  const isSoldOut = seats?.label === "満席";
+  const seats = (() => {
+    if (screening.isPast) return { label: "上映終了", color: "text-gray-400" };
+    if (screening.availableSeats !== undefined && screening.totalSeats)
+      return getSeatsStatus(screening.availableSeats, screening.totalSeats);
+    return null;
+  })();
 
   const content = (
     <div

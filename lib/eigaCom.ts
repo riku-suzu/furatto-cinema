@@ -101,8 +101,23 @@ export async function findTheaterUrl(
 function parseReleaseDate(text: string): string {
   const m = text.match(/(\d+)月(\d+)日公開/);
   if (!m) return "9999-12-31";
-  const year = new Date().getFullYear();
+  const now = new Date();
+  // 月が現在より前なら来年と判断
+  const month = Number(m[1]);
+  const year = month < now.getMonth() + 1 - 6 ? now.getFullYear() + 1 : now.getFullYear();
   return `${year}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+}
+
+/** "HH:MM" と対象日から、その上映が過去かどうか判定（JST基準） */
+function isScreeningPast(targetDate: string, startTime: string): boolean {
+  const [h, m] = startTime.split(":").map(Number);
+  // JST = UTC+9
+  const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const todayJst = nowJst.toISOString().slice(0, 10);
+  if (targetDate !== todayJst) return false;
+  const nowH = nowJst.getUTCHours();
+  const nowM = nowJst.getUTCMinutes();
+  return h < nowH || (h === nowH && m <= nowM);
 }
 
 /** eiga.comの映画館ページから指定日のスケジュールをパース */
@@ -126,8 +141,9 @@ export async function scrapeSchedule(
     const posterPathMatch = posterMatch.match(/\/images\/movie\/\d+\/photo\/[^/]+\/\d+\.jpg/);
     const posterPath = posterPathMatch ? posterPathMatch[0] : undefined;
 
-    // 公開日を取得 ("3月20日公開")
-    const releaseText = $(section).find(".data span").first().text();
+    // 公開日を取得 (<p class="data"><span>3月20日公開</span>...)
+    const releaseText = $(section).find("p.data span").first().text()
+      || $(section).find(".data").first().text();
     const releaseDate = parseReleaseDate(releaseText);
 
     const movieScreenings: Screening[] = [];
@@ -167,6 +183,7 @@ export async function scrapeSchedule(
       td.find("span.btn.off").each((_, slot) => {
         const startTime = $(slot).text().trim();
         if (!startTime) return;
+        const past = isScreeningPast(targetDate, startTime);
 
         movieScreenings.push({
           id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}-off`,
@@ -180,6 +197,7 @@ export async function scrapeSchedule(
           format: "2D",
           availableSeats: 0,
           totalSeats: 1,
+          isPast: past,
         });
       });
     });
