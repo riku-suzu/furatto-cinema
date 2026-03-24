@@ -99,12 +99,16 @@ export default function CinemaDetailPage({ params }: PageProps) {
     loadSchedule();
   }, [cinema, selectedDate]);
 
-  // Group screenings by movie
-  const byMovie = screenings.reduce<Record<number, Screening[]>>((acc, s) => {
-    if (!acc[s.movieId]) acc[s.movieId] = [];
-    acc[s.movieId].push(s);
-    return acc;
-  }, {});
+  // Group screenings by movie, preserving API order (= release date order)
+  const movieOrder: number[] = [];
+  const byMovie: Record<number, Screening[]> = {};
+  screenings.forEach((s) => {
+    if (!byMovie[s.movieId]) {
+      movieOrder.push(s.movieId);
+      byMovie[s.movieId] = [];
+    }
+    byMovie[s.movieId].push(s);
+  });
 
   if (loading) {
     return (
@@ -256,7 +260,7 @@ export default function CinemaDetailPage({ params }: PageProps) {
               </a>
             )}
           </p>
-          {Object.entries(byMovie).map(([movieId, movieScreenings]) => (
+          {movieOrder.map((movieId) => { const movieScreenings = byMovie[movieId]; return (
             <div
               key={movieId}
               className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
@@ -272,7 +276,7 @@ export default function CinemaDetailPage({ params }: PageProps) {
                 ))}
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
 
