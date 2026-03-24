@@ -37,7 +37,29 @@ export async function searchNearbyCinemas(
 
   const data = await res.json();
 
-  return (data.results || []).map((place: Record<string, unknown>) => {
+  // 映画館以外を除外するキーワード
+  const EXCLUDE_KEYWORDS = [
+    "美術館", "博物館", "アートセンター", "文化センター", "市民会館",
+    "カフェ", "レストラン", "ホテル", "スタジオ", "ギャラリー",
+    "図書館", "公民館", "ホール", "劇場", "バー", "居酒屋",
+  ];
+  const CINEMA_KEYWORDS = [
+    "シネマ", "映画", "シアター", "cinema", "theater", "theatre",
+    "IMAX", "イオン", "TOHO", "TOHOシネマ", "109", "ユナイテッド",
+    "ムービックス", "ミッドランド", "フォーラム", "ピカデリー",
+  ];
+
+  const results = (data.results || []).filter((place: Record<string, unknown>) => {
+    const name = (place.name as string) || "";
+    // 除外キーワードにマッチ かつ 映画館キーワードを含まない場合は除外
+    const hasExclude = EXCLUDE_KEYWORDS.some((kw) => name.includes(kw));
+    const hasCinema = CINEMA_KEYWORDS.some((kw) =>
+      name.toLowerCase().includes(kw.toLowerCase())
+    );
+    return !hasExclude || hasCinema;
+  });
+
+  return results.map((place: Record<string, unknown>) => {
     const geometry = place.geometry as { location: { lat: number; lng: number } };
     const photos = place.photos as Array<{ photo_reference: string }> | undefined;
     const lat = geometry.location.lat;

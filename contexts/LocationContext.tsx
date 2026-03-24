@@ -30,22 +30,31 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     setError(null);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLoading(false);
-      },
-      (err) => {
-        const messages: Record<number, string> = {
-          1: "位置情報へのアクセスが拒否されました",
-          2: "位置情報を取得できませんでした",
-          3: "位置情報の取得がタイムアウトしました",
-        };
-        setError(messages[err.code] || "位置情報の取得に失敗しました");
-        setLoading(false);
-      },
-      { timeout: 10000, maximumAge: 60000 }
-    );
+    // スマホでは enableHighAccuracy: false の方が成功しやすい
+    const attempt = (highAccuracy: boolean) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setLoading(false);
+        },
+        (err) => {
+          // 高精度で失敗した場合は低精度で再試行
+          if (highAccuracy && err.code !== 1) {
+            attempt(false);
+            return;
+          }
+          const messages: Record<number, string> = {
+            1: "位置情報へのアクセスが拒否されました。ブラウザの設定で許可してください",
+            2: "位置情報を取得できませんでした。しばらくしてから再試行してください",
+            3: "位置情報の取得がタイムアウトしました。再度お試しください",
+          };
+          setError(messages[err.code] || "位置情報の取得に失敗しました");
+          setLoading(false);
+        },
+        { timeout: highAccuracy ? 10000 : 20000, maximumAge: 60000, enableHighAccuracy: highAccuracy }
+      );
+    };
+    attempt(true);
   }, []);
 
   return (

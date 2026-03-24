@@ -97,6 +97,14 @@ export async function findTheaterUrl(
   return scored[0]?.score >= 0.4 ? scored[0].url : null;
 }
 
+/** "3月20日公開" → "2026-03-20" に変換 */
+function parseReleaseDate(text: string): string {
+  const m = text.match(/(\d+)月(\d+)日公開/);
+  if (!m) return "9999-12-31";
+  const year = new Date().getFullYear();
+  return `${year}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+}
+
 /** eiga.comの映画館ページから指定日のスケジュールをパース */
 export async function scrapeSchedule(
   theaterPath: string,
@@ -105,7 +113,9 @@ export async function scrapeSchedule(
   const dateKey = targetDate.replace(/-/g, ""); // "YYYYMMDD"
   const html = await fetchHtml(`${EIGA_BASE}${theaterPath}`);
   const $ = cheerio.load(html);
-  const screenings: Screening[] = [];
+
+  // 映画ごとにscreeningsと公開日を収集
+  const movieGroups: Array<{ releaseDate: string; screenings: Screening[] }> = [];
 
   $("section[id^='m']").each((_, section) => {
     const movieId = $(section).attr("id")?.replace("m", "");
@@ -113,9 +123,14 @@ export async function scrapeSchedule(
     if (!movieId || !movieTitle) return;
 
     const posterMatch = $(section).find("img").first().attr("src") || "";
-    // eiga.com image URL: .../images/movie/{id}/photo/{hash}/320.jpg
     const posterPathMatch = posterMatch.match(/\/images\/movie\/\d+\/photo\/[^/]+\/\d+\.jpg/);
     const posterPath = posterPathMatch ? posterPathMatch[0] : undefined;
+
+    // 公開日を取得 ("3月20日公開")
+    const releaseText = $(section).find(".data span").first().text();
+    const releaseDate = parseReleaseDate(releaseText);
+
+    const movieScreenings: Screening[] = [];
 
     $(section).find(".movie-schedule").each((_, schedBlock) => {
       const typeEl = $(schedBlock).find(".type-subtitled, .type-dubbed").first();
@@ -128,23 +143,20 @@ export async function scrapeSchedule(
       const td = $(schedBlock).find(`td[data-date="${dateKey}"]`);
       if (!td.length) return;
 
-      // Available slots: <a class="btn ticket*">HH:MM<small>～HH:MM</small></a>
       td.find("a.btn[class*='ticket']").each((_, slot) => {
         const el = $(slot);
         const startTime = el.clone().children("small").remove().end().text().trim();
         const endRaw = el.find("small").text().replace("～", "").trim();
-        const endTime = endRaw || "";
         const ticketUrl = el.attr("href");
-
         if (!startTime) return;
 
-        screenings.push({
+        movieScreenings.push({
           id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}`,
           movieId: Number(movieId),
           movieTitle,
           posterPath,
           startTime,
-          endTime,
+          endTime: endRaw || "",
           screen: "",
           language,
           format: "2D",
@@ -152,12 +164,11 @@ export async function scrapeSchedule(
         } as Screening & { ticketUrl?: string });
       });
 
-      // Sold-out / past slots: <span class="btn off">HH:MM</span>
       td.find("span.btn.off").each((_, slot) => {
         const startTime = $(slot).text().trim();
         if (!startTime) return;
 
-        screenings.push({
+        movieScreenings.push({
           id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}-off`,
           movieId: Number(movieId),
           movieTitle,
@@ -172,7 +183,15 @@ export async function scrapeSchedule(
         });
       });
     });
+
+    if (movieScreenings.length > 0) {
+      movieGroups.push({ releaseDate, screenings: movieScreenings });
+    }
   });
 
-  return screenings.sort((a, b) => a.startTime.localeCompare(b.startTime));
+  // 公開日の新しい順（降順）にソートしてフラット化、各映画内は上映時間順
+  movieGroups.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+  return movieGroups.flatMap((g) =>
+    g.screenings.sort((a, b) => a.startTime.localeCompare(b.startTime))
+  );
 }
