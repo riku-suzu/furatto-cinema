@@ -60,7 +60,7 @@ export async function searchNearbyCinemas(
     );
   });
 
-  return results.map((place: Record<string, unknown>) => {
+  const cinemas = results.map((place: Record<string, unknown>) => {
     const geometry = place.geometry as { location: { lat: number; lng: number } };
     const photos = place.photos as Array<{ photo_reference: string }> | undefined;
     const lat = geometry.location.lat;
@@ -78,6 +78,19 @@ export async function searchNearbyCinemas(
         : undefined,
     };
   });
+
+  // 日本語文字を含まない名前はDetails APIで日本語名を再取得
+  const hasJapanese = (s: string) => /[\u3000-\u9fff\uff00-\uffef]/u.test(s);
+  return Promise.all(
+    cinemas.map(async (cinema) => {
+      if (hasJapanese(cinema.name)) return cinema;
+      const details = await getCinemaDetails(cinema.id);
+      if (details && hasJapanese(details.name)) {
+        return { ...cinema, name: details.name };
+      }
+      return cinema;
+    })
+  );
 }
 
 export async function getCinemaDetails(placeId: string): Promise<Cinema | null> {
