@@ -8,10 +8,8 @@ import FavoriteButton from "./FavoriteButton";
 export default function CinemaCard({ cinema }: { cinema: Cinema }) {
   return (
     <Link href={`/cinemas/${cinema.id}`} className="block group">
-      <div className="rounded-xl overflow-hidden border transition-all duration-200 group-hover:-translate-y-0.5"
-        style={{ background: "#24242e", borderColor: "#3e3e50" }}
-        onMouseEnter={e => (e.currentTarget.style.borderColor = "#e5373a")}
-        onMouseLeave={e => (e.currentTarget.style.borderColor = "#3e3e50")}>
+      <div className="rounded-xl overflow-hidden border border-[#3e3e50] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-[#e5373a]"
+        style={{ background: "#24242e" }}>
         <div className="relative h-36" style={{ background: "#1a1a22" }}>
           {cinema.photoUrl ? (
             <Image src={cinema.photoUrl} alt={cinema.name} fill className="object-cover opacity-75" unoptimized />

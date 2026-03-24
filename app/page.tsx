@@ -87,10 +87,8 @@ export default function TopPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {favorites.map((cinema) => (
               <Link key={cinema.id} href={`/cinemas/${cinema.id}`}
-                className="flex items-center justify-between p-4 rounded-xl border transition-all group"
-                style={{ background: "#24242e", borderColor: "#3e3e50" }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = "#e5373a")}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = "#3e3e50")}>
+                className="flex items-center justify-between p-4 rounded-xl border border-[#3e3e50] transition-all group hover:border-[#e5373a]"
+                style={{ background: "#24242e" }}>
                 <div className="min-w-0">
                   <p className="font-semibold truncate group-hover:text-red-400 transition-colors" style={{ color: "#f2f2f5" }}>
                     {cinema.name}

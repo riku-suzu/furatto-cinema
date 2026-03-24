@@ -13,9 +13,7 @@ export default function Header() {
           <span className="font-bold text-lg tracking-wide" style={{ color: "#f0f0f2" }}>映画時間</span>
         </Link>
         <nav className="flex items-center gap-5 text-sm font-medium">
-          <Link href="/" className="transition-colors" style={{ color: "#c8c8d8" }}
-            onMouseEnter={e => (e.currentTarget.style.color = "#f2f2f5")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#c8c8d8")}>トップ</Link>
+          <Link href="/" className="transition-colors text-[#c8c8d8] hover:text-[#f2f2f5]">トップ</Link>
           <Link href="/cinemas" className="px-3 py-1.5 rounded-lg text-sm font-bold text-white transition-opacity hover:opacity-80"
             style={{ background: "#e5373a" }}>映画館を探す</Link>
         </nav>

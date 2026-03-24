@@ -142,9 +142,7 @@ export default function CinemasPage() {
       )}
 
       <div className="text-center pt-2">
-        <Link href="/" className="text-sm transition-colors" style={{ color: "#9898ac" }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#e5373a")}
-          onMouseLeave={e => (e.currentTarget.style.color = "#9898ac")}>
+        <Link href="/" className="text-sm transition-colors text-[#9898ac] hover:text-[#e5373a]">
           ← トップに戻る
         </Link>
       </div>
