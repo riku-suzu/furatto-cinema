@@ -1,11 +1,6 @@
-export const dynamic = "force-dynamic";
-
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import { FavoritesProvider } from "@/contexts/FavoritesContext";
-import { LocationProvider } from "@/contexts/LocationContext";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -22,12 +17,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={`${geist.className} min-h-screen`} style={{ background: "#1a1a22", color: "#f2f2f5" }}>
-        <FavoritesProvider>
-          <LocationProvider>
-            <Header />
-            <main className="max-w-5xl mx-auto px-4 py-6">{children}</main>
-          </LocationProvider>
-        </FavoritesProvider>
+        {children}
       </body>
     </html>
   );
