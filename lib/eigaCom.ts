@@ -62,13 +62,35 @@ export function getPrefCodeFromCoords(lat: number, lng: number): string {
   return best[0];
 }
 
+// 英語チェーン名 → eiga.com表記への正規化マップ
+const CHAIN_ALIASES: [RegExp, string][] = [
+  [/\baeon\s*cinema\b/i, "イオンシネマ"],
+  [/\b109\s*cinemas?\b/i, "109シネマズ"],
+  [/\btoho\s*cinemas?\b/i, "TOHOシネマズ"],
+  [/\bunited\s*cinemas?\b/i, "ユナイテッドシネマ"],
+  [/\bmovix\b/i, "ムービックス"],
+  [/\bcine\s*citta\b/i, "チネチッタ"],
+  [/\bkino\s*cinema\b/i, "キノシネマ"],
+];
+
+function normalizeChainName(name: string): string {
+  let result = name;
+  for (const [pattern, ja] of CHAIN_ALIASES) {
+    result = result.replace(pattern, ja);
+  }
+  return result;
+}
+
 /** 文字列の類似度スコア（簡易Jaccard） */
 export function similarity(a: string, b: string): number {
+  // 英語チェーン名を日本語に正規化してから比較
+  const na_raw = normalizeChainName(a);
+  const nb_raw = normalizeChainName(b);
   // 記号・スペース正規化
   const normalize = (s: string) =>
     s.replace(/[\s　・（）()「」【】\-－]/g, "").toLowerCase();
-  const na = normalize(a);
-  const nb = normalize(b);
+  const na = normalize(na_raw);
+  const nb = normalize(nb_raw);
   if (na === nb) return 1;
   if (na.includes(nb) || nb.includes(na)) return 0.9;
   // bigram
