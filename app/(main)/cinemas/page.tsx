@@ -21,7 +21,19 @@ export default function CinemasPage() {
     setError(null);
     try {
       const results = await searchNearbyCinemas(c, r);
-      setCinemas(results.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0)));
+      const sorted = results.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+      setCinemas(sorted);
+
+      // Filter to only cinemas that have eiga.com schedule support
+      const checks = await Promise.all(
+        sorted.map((cinema) =>
+          fetch(`/api/schedule/check?name=${encodeURIComponent(cinema.name)}&address=${encodeURIComponent(cinema.address)}`)
+            .then((res) => res.json())
+            .then((data) => ({ cinema, found: data.found as boolean }))
+            .catch(() => ({ cinema, found: false }))
+        )
+      );
+      setCinemas(checks.filter((x) => x.found).map((x) => x.cinema));
     } catch {
       setError("映画館の取得に失敗しました。APIキーを確認してください。");
     } finally {

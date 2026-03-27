@@ -187,7 +187,7 @@ export async function scrapeSchedule(
           movieTitle,
           posterPath,
           startTime,
-          endTime: endRaw || "",
+          endTime: endRaw || calcEndTime(startTime, runtime),
           screen: "",
           language,
           format: "2D",
