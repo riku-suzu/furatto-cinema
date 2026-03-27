@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrefCodeFromAddress, getTheatersByPref, similarity } from "@/lib/eigaCom";
 
+export const preferredRegion = "hnd1"; // Tokyo — eiga.com requires JP IP
 export const maxDuration = 30;
 
 interface CinemaInput {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrefCodeFromAddress, findTheaterUrl, scrapeSchedule } from "@/lib/eigaCom";
 
+export const preferredRegion = "hnd1"; // Tokyo — eiga.com requires JP IP
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const cinemaName = searchParams.get("name") || "";
