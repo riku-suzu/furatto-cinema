@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrefCodeFromAddress, getTheatersByPref, similarity } from "@/lib/eigaCom";
 
+export const maxDuration = 30;
+
 interface CinemaInput {
   id: string;
   name: string;
@@ -26,22 +28,23 @@ export async function POST(req: NextRequest) {
   const found = new Set<string>();
   let checkedPrefs = 0;
 
-  await Promise.all(
-    [...byPref.entries()].map(async ([prefCode, group]) => {
-      try {
-        const theaters = await getTheatersByPref(prefCode);
-        checkedPrefs++;
-        for (const cinema of group) {
-          const best = theaters
-            .map((t) => similarity(cinema.name, t.name))
-            .reduce((a, b) => Math.max(a, b), 0);
-          if (best >= 0.4) found.add(cinema.id);
-        }
-      } catch {
-        // prefecture fetch failed — skip this group
+  // Sequential to avoid rate-limiting from eiga.com
+  for (const [prefCode, group] of byPref.entries()) {
+    try {
+      const theaters = await getTheatersByPref(prefCode);
+      // theaters が空 = アクセス制限などで正常に取得できていない
+      if (theaters.length === 0) continue;
+      checkedPrefs++;
+      for (const cinema of group) {
+        const best = theaters
+          .map((t) => similarity(cinema.name, t.name))
+          .reduce((a, b) => Math.max(a, b), 0);
+        if (best >= 0.4) found.add(cinema.id);
       }
-    })
-  );
+    } catch {
+      // prefecture fetch failed — skip this group
+    }
+  }
 
   return NextResponse.json({
     results: cinemas.map((c) => ({ id: c.id, found: found.has(c.id) })),
