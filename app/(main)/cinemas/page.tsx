@@ -34,10 +34,10 @@ export default function CinemasPage() {
           }),
         });
         const data = await res.json();
-        const results: { id: string; found: boolean }[] = data.results ?? [];
-        const foundIds = new Set<string>(results.filter((r) => r.found).map((r) => r.id));
-        // フィルター結果が0件の場合はeiga.com側の問題なので全件表示
-        if (foundIds.size > 0) {
+        // checkedPrefs === 0 はeiga.comへのアクセス失敗 → 全件表示のまま
+        if ((data.checkedPrefs ?? 0) > 0) {
+          const results: { id: string; found: boolean }[] = data.results ?? [];
+          const foundIds = new Set<string>(results.filter((r) => r.found).map((r) => r.id));
           setCinemas(sorted.filter((c) => foundIds.has(c.id)));
         }
       } catch {
