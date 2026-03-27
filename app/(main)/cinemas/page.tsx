@@ -24,16 +24,21 @@ export default function CinemasPage() {
       const sorted = results.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
       setCinemas(sorted);
 
-      // Filter to only cinemas that have eiga.com schedule support
-      const checks = await Promise.all(
-        sorted.map((cinema) =>
-          fetch(`/api/schedule/check?name=${encodeURIComponent(cinema.name)}&address=${encodeURIComponent(cinema.address)}`)
-            .then((res) => res.json())
-            .then((data) => ({ cinema, found: data.found as boolean }))
-            .catch(() => ({ cinema, found: false }))
-        )
+      // Filter to only cinemas that have eiga.com schedule support (batch: 1 request per prefecture)
+      const res = await fetch("/api/schedule/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cinemas: sorted.map((c) => ({ id: c.id, name: c.name, address: c.address })),
+        }),
+      });
+      const data = await res.json();
+      const foundIds = new Set<string>(
+        (data.results as { id: string; found: boolean }[])
+          .filter((r) => r.found)
+          .map((r) => r.id)
       );
-      setCinemas(checks.filter((x) => x.found).map((x) => x.cinema));
+      setCinemas(sorted.filter((c) => foundIds.has(c.id)));
     } catch {
       setError("映画館の取得に失敗しました。APIキーを確認してください。");
     } finally {

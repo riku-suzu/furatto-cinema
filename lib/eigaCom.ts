@@ -36,7 +36,7 @@ export function getPrefCodeFromAddress(address: string): string | null {
 }
 
 /** 文字列の類似度スコア（簡易Jaccard） */
-function similarity(a: string, b: string): number {
+export function similarity(a: string, b: string): number {
   // 記号・スペース正規化
   const normalize = (s: string) =>
     s.replace(/[\s　・（）()「」【】\-－]/g, "").toLowerCase();

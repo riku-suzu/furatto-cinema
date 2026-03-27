@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useImperativeHandle, forwardRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -8,6 +8,10 @@ interface Props {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+}
+
+export interface CurtainHandle {
+  trigger: () => void;
 }
 
 type Phase = "idle" | "ready" | "closing" | "closed" | "opening";
@@ -45,14 +49,20 @@ function CurtainFolds({ side }: { side: "left" | "right" }) {
   );
 }
 
-export default function CurtainTransition({
+const CurtainTransition = forwardRef<CurtainHandle, Props>(function CurtainTransition({
   href,
   children,
   className,
   style,
-}: Props) {
+}, ref) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
+
+  useImperativeHandle(ref, () => ({
+    trigger: () => {
+      if (phase === "idle") setPhase("ready");
+    },
+  }), [phase]);
 
   const handleClick = () => {
     if (phase !== "idle") return;
@@ -201,4 +211,6 @@ export default function CurtainTransition({
       )}
     </>
   );
-}
+});
+
+export default CurtainTransition;

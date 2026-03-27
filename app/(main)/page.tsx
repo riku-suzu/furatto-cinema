@@ -4,15 +4,15 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useLocation } from "@/contexts/LocationContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import FavoriteButton from "@/components/FavoriteButton";
+import CurtainTransition, { CurtainHandle } from "@/components/CurtainTransition";
 
 export default function TopPage() {
   const { coords, loading, error, requestLocation } = useLocation();
   const { favorites } = useFavorites();
-  const router = useRouter();
+  const curtainRef = useRef<CurtainHandle>(null);
   const wasLoadingRef = useRef(false);
 
   useEffect(() => {
@@ -22,13 +22,13 @@ export default function TopPage() {
   useEffect(() => {
     if (coords) {
       sessionStorage.setItem("userCoords", JSON.stringify(coords));
-      // 新たにGPS取得した場合のみ自動遷移
+      // 新たにGPS取得した場合のみ自動でカーテン演出→遷移
       if (wasLoadingRef.current) {
-        const t = setTimeout(() => router.push("/cinemas"), 600);
+        const t = setTimeout(() => curtainRef.current?.trigger(), 300);
         return () => clearTimeout(t);
       }
     }
-  }, [coords, router]);
+  }, [coords]);
 
   return (
     <div className="space-y-12">
@@ -82,7 +82,11 @@ export default function TopPage() {
           ) : (
             <div className="flex flex-col items-center gap-3">
               <p className="text-sm font-medium" style={{ color: "#4ade80" }}>✓ 現在地を取得しました</p>
-              <p className="text-sm" style={{ color: "#9898ac" }}>周辺の映画館を検索中...</p>
+              <CurtainTransition ref={curtainRef} href="/cinemas"
+                className="inline-flex items-center gap-2 font-bold px-10 py-4 rounded-full text-lg text-white transition-opacity hover:opacity-85"
+                style={{ background: "#e5373a" }}>
+                周辺の映画館を見る →
+              </CurtainTransition>
             </div>
           )}
         </div>

@@ -1,20 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPrefCodeFromAddress, findTheaterUrl } from "@/lib/eigaCom";
+import { getPrefCodeFromAddress, getTheatersByPref } from "@/lib/eigaCom";
+import { similarity } from "@/lib/eigaCom";
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const name = searchParams.get("name") || "";
-  const address = searchParams.get("address") || "";
+interface CinemaInput {
+  id: string;
+  name: string;
+  address: string;
+}
 
-  if (!name) return NextResponse.json({ found: false });
+// POST /api/schedule/check  body: { cinemas: CinemaInput[] }
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => null);
+  const cinemas: CinemaInput[] = body?.cinemas ?? [];
 
-  const prefCode = getPrefCodeFromAddress(address);
-  if (!prefCode) return NextResponse.json({ found: false });
+  if (cinemas.length === 0) return NextResponse.json({ results: [] });
 
-  try {
-    const url = await findTheaterUrl(name, prefCode);
-    return NextResponse.json({ found: !!url });
-  } catch {
-    return NextResponse.json({ found: false });
+  // Group by prefecture to minimise eiga.com requests
+  const byPref = new Map<string, CinemaInput[]>();
+  for (const c of cinemas) {
+    const code = getPrefCodeFromAddress(c.address);
+    if (!code) continue;
+    if (!byPref.has(code)) byPref.set(code, []);
+    byPref.get(code)!.push(c);
   }
+
+  const found = new Set<string>();
+
+  await Promise.all(
+    [...byPref.entries()].map(async ([prefCode, group]) => {
+      try {
+        const theaters = await getTheatersByPref(prefCode);
+        for (const cinema of group) {
+          const best = theaters
+            .map((t) => similarity(cinema.name, t.name))
+            .reduce((a, b) => Math.max(a, b), 0);
+          if (best >= 0.4) found.add(cinema.id);
+        }
+      } catch {
+        // prefecture fetch failed — keep none from this group
+      }
+    })
+  );
+
+  return NextResponse.json({
+    results: cinemas.map((c) => ({ id: c.id, found: found.has(c.id) })),
+  });
 }
