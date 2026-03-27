@@ -30,7 +30,7 @@ export default function CinemasPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            cinemas: sorted.map((c) => ({ id: c.id, name: c.name, address: c.address })),
+            cinemas: sorted.map((c) => ({ id: c.id, name: c.name, address: c.address, lat: c.lat, lng: c.lng })),
           }),
         });
         const data = await res.json();

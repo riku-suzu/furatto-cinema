@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPrefCodeFromAddress, getTheatersByPref, similarity } from "@/lib/eigaCom";
+import { getPrefCodeFromAddress, getPrefCodeFromCoords, getTheatersByPref, similarity } from "@/lib/eigaCom";
 
 export const preferredRegion = "hnd1"; // Tokyo — eiga.com requires JP IP
 export const maxDuration = 30;
@@ -8,6 +8,8 @@ interface CinemaInput {
   id: string;
   name: string;
   address: string;
+  lat: number;
+  lng: number;
 }
 
 // POST /api/schedule/check  body: { cinemas: CinemaInput[] }
@@ -17,11 +19,10 @@ export async function POST(req: NextRequest) {
 
   if (cinemas.length === 0) return NextResponse.json({ results: [], checkedPrefs: 0 });
 
-  // Group by prefecture to minimise eiga.com requests
+  // Group by prefecture — fall back to coords if address has no prefecture name
   const byPref = new Map<string, CinemaInput[]>();
   for (const c of cinemas) {
-    const code = getPrefCodeFromAddress(c.address);
-    if (!code) continue;
+    const code = getPrefCodeFromAddress(c.address) ?? getPrefCodeFromCoords(c.lat, c.lng);
     if (!byPref.has(code)) byPref.set(code, []);
     byPref.get(code)!.push(c);
   }
