@@ -14,7 +14,7 @@ export default function CinemasPage() {
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [radius, setRadius] = useState(15000);
+  const [radius, setRadius] = useState(5000);
 
   const fetchCinemas = useCallback(async (c: Coordinates, r: number) => {
     setLoading(true);
