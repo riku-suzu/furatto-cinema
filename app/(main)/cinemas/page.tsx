@@ -26,7 +26,6 @@ export default function CinemasPage() {
       setCinemas(sorted);
       setLoading(false);
 
-      // eiga.comチェックはバックグラウンドで実行（フェードアウト付き）
       fetch("/api/schedule/check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,28 +80,26 @@ export default function CinemasPage() {
   const RADII = [5000, 10000, 15000];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Title bar */}
-      <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b" style={{ borderColor: "#3e3e50" }}>
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight" style={{ color: "#f2f2f5" }}>周辺の映画館</h1>
-          {coords && (
-            <p className="text-xs mt-0.5" style={{ color: "#9898ac" }}>
-              {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
-            </p>
+          <h1 className="text-3xl font-black tracking-tight" style={{ color: "#f2f2f5" }}>周辺の映画館</h1>
+          {cinemas.length > 0 && !loading && (
+            <p className="text-sm mt-1" style={{ color: "#808090" }}>{cinemas.length}件が見つかりました</p>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: "#9898ac" }}>検索範囲:</span>
+          <span className="text-xs mr-1" style={{ color: "#808090" }}>範囲:</span>
           {RADII.map((r) => (
             <button
               key={r}
               onClick={() => setRadius(r)}
-              className="px-3 py-1 rounded-full text-xs font-semibold transition-all"
+              className="px-3 py-1.5 rounded-md text-xs font-semibold transition-all"
               style={{
-                background: radius === r ? "#e5373a" : "#2e2e3a",
-                color: radius === r ? "#fff" : "#c8c8d8",
-                border: `1px solid ${radius === r ? "#e5373a" : "#3e3e50"}`,
+                background: radius === r ? "#e5373a" : "rgba(255,255,255,0.06)",
+                color: radius === r ? "#fff" : "#808090",
+                border: `1px solid ${radius === r ? "#e5373a" : "rgba(255,255,255,0.08)"}`,
               }}
             >
               {r / 1000}km
@@ -113,77 +110,72 @@ export default function CinemasPage() {
 
       {/* No location */}
       {!hasCoords && !locLoading && (
-        <div className="text-center py-16 rounded-xl border" style={{ background: "#24242e", borderColor: "#3e3e50" }}>
-          <div className="text-5xl mb-4">📍</div>
+        <div className="flex flex-col items-center justify-center py-24 rounded-2xl text-center"
+          style={{ background: "#16161e", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="text-5xl mb-6">📍</div>
           <h2 className="text-xl font-bold mb-2" style={{ color: "#f2f2f5" }}>位置情報が必要です</h2>
-          <p className="mb-6 text-sm" style={{ color: "#c8c8d8" }}>周辺の映画館を検索するために現在地を取得します</p>
+          <p className="mb-8 text-sm" style={{ color: "#808090" }}>周辺の映画館を検索するために現在地を取得します</p>
           <button
             onClick={requestLocation}
             disabled={locLoading}
-            className="font-bold px-6 py-3 rounded-full transition-colors text-sm"
-            style={{ background: "#e5373a", color: "#fff" }}
+            className="font-bold px-8 py-3 rounded-full transition-all text-sm text-white"
+            style={{ background: "#e5373a", boxShadow: "0 0 30px rgba(229,55,58,0.3)" }}
           >
             現在地を取得する
           </button>
-          {locError && <p className="text-sm mt-3" style={{ color: "#fca5a5" }}>{locError}</p>}
+          {locError && <p className="text-sm mt-4" style={{ color: "#fca5a5" }}>{locError}</p>}
         </div>
       )}
 
       {/* Loading skeleton */}
       {(loading || locLoading) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-xl overflow-hidden border animate-pulse"
-              style={{ background: "#24242e", borderColor: "#3e3e50" }}>
-              <div className="h-36" style={{ background: "#2e2e3a" }} />
-              <div className="p-4 space-y-2">
-                <div className="h-4 rounded w-3/4" style={{ background: "#2e2e3a" }} />
-                <div className="h-3 rounded" style={{ background: "#2e2e3a" }} />
-              </div>
-            </div>
+            <div key={i} className="rounded-lg overflow-hidden animate-pulse"
+              style={{ aspectRatio: "16/10", background: "#16161e" }} />
           ))}
         </div>
       )}
 
       {/* Error */}
       {error && (
-        <div className="rounded-xl p-4 text-sm border" style={{ background: "#450a0a", borderColor: "#991b1b", color: "#fca5a5" }}>
+        <div className="rounded-xl p-4 text-sm" style={{ background: "rgba(229,55,58,0.1)", border: "1px solid rgba(229,55,58,0.2)", color: "#fca5a5" }}>
           {error}
         </div>
       )}
 
       {/* Results */}
       {!loading && cinemas.length > 0 && (
-        <>
-          <p className="text-xs" style={{ color: "#9898ac" }}>{cinemas.length}件の映画館が見つかりました</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {cinemas.map((cinema) => (
-              <div
-                key={cinema.id}
-                style={{
-                  opacity: hiddenIds.has(cinema.id) ? 0 : 1,
-                  transition: "opacity 0.35s ease",
-                  pointerEvents: hiddenIds.has(cinema.id) ? "none" : undefined,
-                }}
-              >
-                <CinemaCard cinema={cinema} />
-              </div>
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {cinemas.map((cinema) => (
+            <div
+              key={cinema.id}
+              style={{
+                opacity: hiddenIds.has(cinema.id) ? 0 : 1,
+                transition: "opacity 0.35s ease",
+                pointerEvents: hiddenIds.has(cinema.id) ? "none" : undefined,
+              }}
+            >
+              <CinemaCard cinema={cinema} />
+            </div>
+          ))}
+        </div>
       )}
 
       {/* No results */}
       {!loading && hasCoords && cinemas.length === 0 && !error && (
-        <div className="text-center py-16 rounded-xl border" style={{ background: "#24242e", borderColor: "#3e3e50" }}>
-          <div className="text-5xl mb-4">🎬</div>
+        <div className="flex flex-col items-center justify-center py-24 rounded-2xl text-center"
+          style={{ background: "#16161e", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="text-5xl mb-6">🎬</div>
           <h2 className="text-xl font-bold mb-2" style={{ color: "#f2f2f5" }}>映画館が見つかりませんでした</h2>
-          <p className="text-sm" style={{ color: "#c8c8d8" }}>検索範囲を広げてみてください</p>
+          <p className="text-sm" style={{ color: "#808090" }}>検索範囲を広げてみてください</p>
         </div>
       )}
 
-      <div className="text-center pt-2">
-        <Link href="/" className="text-sm transition-colors text-[#9898ac] hover:text-[#e5373a]">
+      <div className="text-center pt-4">
+        <Link href="/" className="text-sm transition-colors" style={{ color: "#808090" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "#e5373a")}
+          onMouseLeave={e => (e.currentTarget.style.color = "#808090")}>
           ← トップに戻る
         </Link>
       </div>

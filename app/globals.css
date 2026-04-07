@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --bg:         #1a1a22;        /* 少し明るい紺黒 */
-  --bg-card:    #24242e;        /* カード背景 */
-  --bg-card2:   #2e2e3a;        /* やや明るいカード */
-  --border:     #3e3e50;        /* ボーダー */
+  --bg:         #0d0d12;
+  --bg-card:    #16161e;
+  --bg-card2:   #1e1e28;
+  --border:     rgba(255,255,255,0.08);
   --red:        #e5373a;
   --red-dark:   #b91c1e;
-  --text:       #f2f2f5;        /* 白に近い */
-  --text-sub:   #c8c8d8;        /* 明るいグレー（視認性UP） */
-  --text-muted: #9898ac;        /* 中間グレー（視認性UP） */
+  --text:       #f2f2f5;
+  --text-sub:   #c8c8d8;
+  --text-muted: #808090;
   --gold:       #fbbf24;
 }
 
@@ -23,3 +23,13 @@ body {
   scrollbar-width: none;
 }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* Film grain overlay for cinematic feel */
+.film-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.04;
+}

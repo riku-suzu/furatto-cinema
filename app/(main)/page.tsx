@@ -22,7 +22,6 @@ export default function TopPage() {
   useEffect(() => {
     if (coords) {
       sessionStorage.setItem("userCoords", JSON.stringify(coords));
-      // 新たにGPS取得した場合のみ自動でカーテン演出→遷移
       if (wasLoadingRef.current) {
         const t = setTimeout(() => curtainRef.current?.trigger(), 300);
         return () => clearTimeout(t);
@@ -31,32 +30,51 @@ export default function TopPage() {
   }, [coords]);
 
   return (
-    <div className="space-y-12">
-      {/* Hero */}
-      <section className="text-center pt-14 pb-10 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-20 -left-20 w-72 h-72 rounded-full opacity-[0.08]"
-            style={{ background: "radial-gradient(circle, #e5373a, transparent)" }} />
-          <div className="absolute -bottom-20 -right-10 w-96 h-96 rounded-full opacity-[0.08]"
-            style={{ background: "radial-gradient(circle, #e5373a, transparent)" }} />
-        </div>
-        <div className="relative">
-          <p className="text-xs font-bold tracking-widest uppercase mb-4" style={{ color: "#e5373a" }}>
-            Now Showing Near You
-          </p>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-5 leading-tight" style={{ color: "#f2f2f5" }}>
-            周辺の映画館を<br />
-            <span style={{ color: "#e5373a" }}>すぐに探せる</span>
-          </h1>
-          <p className="text-base mb-10 max-w-md mx-auto" style={{ color: "#c8c8d8" }}>
-            現在地から半径15km圏内の映画館と上映スケジュールを一覧表示
-          </p>
+    <div>
+      {/* ── Hero ── */}
+      <section className="relative min-h-[75vh] flex flex-col items-center justify-center text-center overflow-hidden -mx-5 -mt-8 px-5">
+
+        {/* Cinematic background */}
+        <div className="absolute inset-0" style={{ background: "#0d0d12" }} />
+        <div className="absolute inset-0" style={{
+          background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(229,55,58,0.12) 0%, transparent 70%)"
+        }} />
+        {/* Subtle grid lines */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
+          backgroundSize: "60px 60px"
+        }} />
+
+        {/* Content */}
+        <div className="relative z-10 max-w-2xl mx-auto space-y-8">
+          <div className="space-y-4">
+            <p className="text-xs font-bold tracking-[0.3em] uppercase" style={{ color: "#e5373a" }}>
+              Now Playing Near You
+            </p>
+            <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.05]" style={{ color: "#f2f2f5" }}>
+              近くの映画館を<br />
+              <span style={{
+                background: "linear-gradient(135deg, #e5373a 0%, #ff6b6b 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text"
+              }}>今すぐ探す</span>
+            </h1>
+            <p className="text-base sm:text-lg" style={{ color: "#808090" }}>
+              現在地から半径15km圏内の映画館と<br className="hidden sm:block" />上映スケジュールをリアルタイム表示
+            </p>
+          </div>
 
           {!coords ? (
-            <div className="flex flex-col items-center gap-3">
-              <button onClick={requestLocation} disabled={loading}
-                className="inline-flex items-center gap-3 font-bold px-10 py-4 rounded-full text-lg text-white transition-opacity hover:opacity-85 disabled:opacity-50"
-                style={{ background: "#e5373a" }}>
+            <div className="flex flex-col items-center gap-4">
+              <button
+                onClick={requestLocation}
+                disabled={loading}
+                className="inline-flex items-center gap-3 font-bold px-10 py-4 rounded-full text-lg text-white transition-all disabled:opacity-50"
+                style={{ background: "#e5373a", boxShadow: "0 0 40px rgba(229,55,58,0.35)" }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 0 60px rgba(229,55,58,0.5)")}
+                onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 0 40px rgba(229,55,58,0.35)")}
+              >
                 {loading ? (
                   <>
                     <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -76,39 +94,53 @@ export default function TopPage() {
                 )}
               </button>
               {error && (
-                <p className="text-sm px-4 py-2 rounded-lg" style={{ color: "#fca5a5", background: "#2d0a0a" }}>{error}</p>
+                <p className="text-sm px-4 py-2.5 rounded-xl" style={{ color: "#fca5a5", background: "rgba(229,55,58,0.1)", border: "1px solid rgba(229,55,58,0.2)" }}>
+                  {error}
+                </p>
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3">
-              <p className="text-sm font-medium" style={{ color: "#4ade80" }}>✓ 現在地を取得しました</p>
-              <CurtainTransition ref={curtainRef} href="/cinemas"
-                className="inline-flex items-center gap-2 font-bold px-10 py-4 rounded-full text-lg text-white transition-opacity hover:opacity-85"
-                style={{ background: "#e5373a" }}>
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-sm font-semibold flex items-center gap-2" style={{ color: "#4ade80" }}>
+                <span className="inline-block w-2 h-2 rounded-full" style={{ background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
+                現在地を取得しました
+              </p>
+              <CurtainTransition
+                ref={curtainRef}
+                href="/cinemas"
+                className="inline-flex items-center gap-2 font-bold px-10 py-4 rounded-full text-lg text-white transition-all"
+                style={{ background: "#e5373a", boxShadow: "0 0 40px rgba(229,55,58,0.35)" }}
+              >
                 周辺の映画館を見る →
               </CurtainTransition>
             </div>
           )}
         </div>
+
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none" style={{
+          background: "linear-gradient(to bottom, transparent, #0d0d12)"
+        }} />
       </section>
 
-      {/* Favorites */}
+      {/* ── Favorites ── */}
       {favorites.length > 0 && (
-        <section>
-          <h2 className="text-sm font-bold tracking-widest uppercase mb-4 flex items-center gap-2"
-            style={{ color: "#c8c8d8" }}>
-            <span style={{ color: "#fbbf24" }}>★</span> お気に入り映画館
+        <section className="mt-16 space-y-4">
+          <h2 className="text-xs font-bold tracking-[0.25em] uppercase flex items-center gap-2" style={{ color: "#808090" }}>
+            <span style={{ color: "#fbbf24" }}>★</span> お気に入り
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {favorites.map((cinema) => (
               <Link key={cinema.id} href={`/cinemas/${cinema.id}`}
-                className="flex items-center justify-between p-4 rounded-xl border border-[#3e3e50] transition-all group hover:border-[#e5373a]"
-                style={{ background: "#24242e" }}>
+                className="flex items-center justify-between p-4 rounded-xl transition-all group"
+                style={{ background: "#16161e", border: "1px solid rgba(255,255,255,0.06)" }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(229,55,58,0.4)")}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}>
                 <div className="min-w-0">
-                  <p className="font-semibold truncate group-hover:text-red-400 transition-colors" style={{ color: "#f2f2f5" }}>
+                  <p className="font-semibold truncate transition-colors text-white group-hover:text-red-400">
                     {cinema.name}
                   </p>
-                  <p className="text-xs truncate mt-0.5" style={{ color: "#9898ac" }}>{cinema.address}</p>
+                  <p className="text-xs truncate mt-0.5" style={{ color: "#808090" }}>{cinema.address}</p>
                 </div>
                 <FavoriteButton cinema={cinema} className="ml-3 flex-shrink-0" />
               </Link>
@@ -117,21 +149,21 @@ export default function TopPage() {
         </section>
       )}
 
-      {/* Features */}
-      <section className="border-t pt-10" style={{ borderColor: "#3e3e50" }}>
-        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
+      {/* ── Features ── */}
+      <section className="mt-20 pt-12 pb-8" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 text-center">
           {[
-            { icon: "📍", title: "現在地から検索", desc: "GPSで半径15km圏内の映画館を自動検索します" },
+            { icon: "📍", title: "現在地から検索", desc: "GPSで半径15km圏内の映画館を自動検索" },
             { icon: "🎞", title: "上映スケジュール", desc: "映画.comのリアルタイムデータで作品・時間を確認" },
-            { icon: "★", title: "お気に入り保存", desc: "よく行く映画館を登録してすぐアクセス" },
+            { icon: "★", title: "お気に入り保存", desc: "よく行く映画館をすぐアクセス" },
           ].map((f) => (
-            <div key={f.title}>
-              <div className="text-3xl mb-3">{f.icon}</div>
-              <dt className="font-bold mb-1" style={{ color: "#f2f2f5" }}>{f.title}</dt>
-              <dd className="text-sm" style={{ color: "#c8c8d8" }}>{f.desc}</dd>
+            <div key={f.title} className="space-y-3">
+              <div className="text-3xl">{f.icon}</div>
+              <dt className="font-bold text-sm" style={{ color: "#f2f2f5" }}>{f.title}</dt>
+              <dd className="text-sm leading-relaxed" style={{ color: "#808090" }}>{f.desc}</dd>
             </div>
           ))}
-        </dl>
+        </div>
       </section>
     </div>
   );

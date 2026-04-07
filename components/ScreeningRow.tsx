@@ -30,10 +30,15 @@ export default function ScreeningRow({ screening }: ScreeningRowProps) {
   const dimmed = screening.isPast || isSoldOut;
 
   const inner = (
-    <div className="flex items-center gap-3 px-4 py-3 border-b transition-colors"
-      style={{ borderColor: "#2e2e3a", opacity: dimmed ? 0.5 : 1 }}>
+    <div
+      className="flex items-center gap-4 px-5 py-3.5 transition-colors"
+      style={{
+        borderBottom: "1px solid rgba(255,255,255,0.04)",
+        opacity: dimmed ? 0.4 : 1,
+      }}
+    >
       {/* Poster */}
-      <div className="relative w-8 h-12 flex-shrink-0 rounded overflow-hidden" style={{ background: "#2e2e3a" }}>
+      <div className="relative w-8 h-12 flex-shrink-0 rounded-md overflow-hidden" style={{ background: "#1e1e28" }}>
         {screening.posterPath && !screening.posterPath.startsWith("/images/movie/") ? (
           <Image src={getPosterUrl(screening.posterPath, "w92")} alt={screening.movieTitle} fill className="object-cover" unoptimized />
         ) : (
@@ -43,33 +48,37 @@ export default function ScreeningRow({ screening }: ScreeningRowProps) {
 
       {/* Time */}
       <div className="flex-shrink-0 w-20">
-        <p className="text-base font-black" style={{ color: dimmed ? "#808090" : "#f0f0f2" }}>
+        <p className="text-lg font-black leading-none" style={{ color: dimmed ? "#808090" : "#f2f2f5" }}>
           {screening.startTime}
         </p>
         {screening.endTime && (
-          <p className="text-xs" style={{ color: "#808090" }}>〜 {screening.endTime}</p>
+          <p className="text-xs mt-0.5" style={{ color: "#808090" }}>〜 {screening.endTime}</p>
         )}
       </div>
 
-      {/* Labels */}
+      {/* Badges */}
       <div className="flex items-center gap-1.5 flex-1 flex-wrap min-w-0">
         {screening.language && (
-          <span className="text-xs px-1.5 py-0.5 rounded whitespace-nowrap"
-            style={{ background: "#1e3050", color: "#93c5fd" }}>{screening.language}</span>
+          <span className="text-xs px-2 py-0.5 rounded-md whitespace-nowrap font-medium"
+            style={{ background: "rgba(147,197,253,0.1)", color: "#93c5fd", border: "1px solid rgba(147,197,253,0.15)" }}>
+            {screening.language}
+          </span>
         )}
         {screening.format && screening.format !== "2D" && (
-          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "#26262c", color: "#b8b8c2" }}>
+          <span className="text-xs px-2 py-0.5 rounded-md font-medium"
+            style={{ background: "rgba(255,255,255,0.05)", color: "#b8b8c2", border: "1px solid rgba(255,255,255,0.08)" }}>
             {screening.format}
           </span>
         )}
       </div>
 
-      {/* Status */}
+      {/* Status / CTA */}
       <div className="flex-shrink-0 text-right">
         {status ? (
           <span className="text-xs font-semibold" style={{ color: status.color }}>{status.label}</span>
         ) : isClickable ? (
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full text-white" style={{ background: "#e5373a" }}>
+          <span className="text-xs font-bold px-3 py-1.5 rounded-full text-white"
+            style={{ background: "#e5373a", boxShadow: "0 0 12px rgba(229,55,58,0.3)" }}>
             購入 →
           </span>
         ) : null}
@@ -79,7 +88,11 @@ export default function ScreeningRow({ screening }: ScreeningRowProps) {
 
   if (isClickable) {
     return (
-      <a href={screening.ticketUrl} target="_blank" rel="noopener noreferrer" className="block hover:bg-zinc-800/50 transition-colors">
+      <a href={screening.ticketUrl} target="_blank" rel="noopener noreferrer"
+        className="block transition-colors"
+        style={{ background: "transparent" }}
+        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
         {inner}
       </a>
     );
