@@ -274,6 +274,6 @@ export async function scrapeSchedule(
   // 公開日の新しい順（降順）にソートしてフラット化、各映画内は上映時間順
   movieGroups.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
   return movieGroups.flatMap((g) =>
-    g.screenings.sort((a, b) => a.startTime.localeCompare(b.startTime))
+    g.screenings.sort((a, b) => a.startTime.padStart(5, "0").localeCompare(b.startTime.padStart(5, "0")))
   );
 }
