@@ -2,18 +2,12 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useLocation } from "@/contexts/LocationContext";
 import { searchNearbyCinemas } from "@/lib/googlePlaces";
 import CinemaCard from "@/components/CinemaCard";
-import { Cinema, Coordinates, Screening } from "@/types";
-
-interface MovieResult {
-  movieTitle: string;
-  posterPath?: string;
-  cinemas: { cinema: Cinema; times: string[] }[];
-}
+import { Cinema, Coordinates } from "@/types";
 
 export default function CinemasPage() {
   const { coords, loading: locLoading, error: locError, requestLocation } = useLocation();
@@ -23,22 +17,13 @@ export default function CinemasPage() {
   const [radius, setRadius] = useState(5000);
   const [hiddenIds, setHiddenIds] = useState(new Set<string>());
 
-  // Movie cross-search
-  const [movieQuery, setMovieQuery] = useState("");
-  const [movieSearching, setMovieSearching] = useState(false);
-  const [movieResults, setMovieResults] = useState<MovieResult[] | null>(null);
-  const cinemasRef = useRef<Cinema[]>([]);
-
   const fetchCinemas = useCallback(async (c: Coordinates, r: number) => {
     setLoading(true);
     setError(null);
-    setMovieResults(null);
-    setMovieQuery("");
     try {
       const results = await searchNearbyCinemas(c, r);
       const sorted = results.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
       setCinemas(sorted);
-      cinemasRef.current = sorted;
       setLoading(false);
 
       // eiga.comチェックはバックグラウンドで実行（フェードアウト付き）
@@ -60,11 +45,7 @@ export default function CinemasPage() {
               const hideSet = new Set(toRemove.map((c) => c.id));
               setHiddenIds(hideSet);
               setTimeout(() => {
-                setCinemas((p) => {
-                  const filtered = p.filter((c) => foundIds.has(c.id));
-                  cinemasRef.current = filtered;
-                  return filtered;
-                });
+                setCinemas((p) => p.filter((c) => foundIds.has(c.id)));
                 setHiddenIds(new Set());
               }, 400);
               return prev;
@@ -96,41 +77,6 @@ export default function CinemasPage() {
     setHasCoords(true);
     fetchCinemas(coords, radius);
   }, [coords, radius, fetchCinemas]);
-
-  const searchMovies = useCallback(async () => {
-    const query = movieQuery.trim();
-    if (!query || cinemasRef.current.length === 0) return;
-    setMovieSearching(true);
-    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
-
-    const schedules = await Promise.all(
-      cinemasRef.current.map(async (cinema) => {
-        const p = new URLSearchParams({ name: cinema.name, address: cinema.address, date: today });
-        const res = await fetch(`/api/schedule?${p}`).catch(() => null);
-        const data = res ? await res.json().catch(() => ({})) : {};
-        return { cinema, screenings: (data.screenings ?? []) as Screening[] };
-      })
-    );
-
-    const movieMap = new Map<string, MovieResult>();
-    for (const { cinema, screenings } of schedules) {
-      for (const s of screenings) {
-        if (!s.movieTitle.toLowerCase().includes(query.toLowerCase())) continue;
-        if (!movieMap.has(s.movieTitle)) {
-          movieMap.set(s.movieTitle, { movieTitle: s.movieTitle, posterPath: s.posterPath, cinemas: [] });
-        }
-        const entry = movieMap.get(s.movieTitle)!;
-        const cinemaEntry = entry.cinemas.find((c) => c.cinema.id === cinema.id);
-        if (cinemaEntry) {
-          if (!cinemaEntry.times.includes(s.startTime)) cinemaEntry.times.push(s.startTime);
-        } else {
-          entry.cinemas.push({ cinema, times: [s.startTime] });
-        }
-      }
-    }
-    setMovieResults([...movieMap.values()]);
-    setMovieSearching(false);
-  }, [movieQuery]);
 
   const RADII = [5000, 10000, 15000];
 
@@ -164,41 +110,6 @@ export default function CinemasPage() {
           ))}
         </div>
       </div>
-
-      {/* Movie search bar */}
-      {!loading && cinemas.length > 0 && (
-        <form
-          onSubmit={(e) => { e.preventDefault(); searchMovies(); }}
-          className="flex gap-2"
-        >
-          <input
-            type="text"
-            value={movieQuery}
-            onChange={(e) => setMovieQuery(e.target.value)}
-            placeholder="映画タイトルで横断検索..."
-            className="flex-1 px-4 py-2 rounded-full text-sm outline-none border"
-            style={{ background: "#24242e", color: "#f2f2f5", borderColor: "#3e3e50" }}
-          />
-          <button
-            type="submit"
-            disabled={movieSearching || !movieQuery.trim()}
-            className="px-5 py-2 rounded-full text-sm font-bold transition-opacity disabled:opacity-40"
-            style={{ background: "#e5373a", color: "#fff" }}
-          >
-            {movieSearching ? "検索中…" : "検索"}
-          </button>
-          {movieResults !== null && (
-            <button
-              type="button"
-              onClick={() => { setMovieResults(null); setMovieQuery(""); }}
-              className="px-4 py-2 rounded-full text-sm font-medium"
-              style={{ background: "#2e2e3a", color: "#c8c8d8", border: "1px solid #3e3e50" }}
-            >
-              ✕
-            </button>
-          )}
-        </form>
-      )}
 
       {/* No location */}
       {!hasCoords && !locLoading && (
@@ -241,46 +152,8 @@ export default function CinemasPage() {
         </div>
       )}
 
-      {/* Movie search results */}
-      {movieResults !== null && !movieSearching && (
-        <div className="space-y-4">
-          <p className="text-xs" style={{ color: "#9898ac" }}>
-            「{movieQuery}」の上映情報 — {movieResults.length}件
-          </p>
-          {movieResults.length === 0 ? (
-            <div className="text-center py-12 rounded-xl border" style={{ background: "#24242e", borderColor: "#3e3e50" }}>
-              <p className="text-lg font-bold mb-1" style={{ color: "#f2f2f5" }}>該当する映画が見つかりませんでした</p>
-              <p className="text-sm" style={{ color: "#9898ac" }}>タイトルを変えて検索してみてください</p>
-            </div>
-          ) : (
-            movieResults.map((movie) => (
-              <div key={movie.movieTitle} className="rounded-xl border p-4 space-y-3"
-                style={{ background: "#24242e", borderColor: "#3e3e50" }}>
-                <h3 className="font-bold text-base" style={{ color: "#f2f2f5" }}>{movie.movieTitle}</h3>
-                <div className="space-y-2">
-                  {movie.cinemas.map(({ cinema, times }) => (
-                    <Link key={cinema.id} href={`/cinemas/${cinema.id}`}
-                      className="flex items-start justify-between gap-4 p-3 rounded-lg transition-colors hover:bg-[#2e2e3a]">
-                      <span className="text-sm font-medium" style={{ color: "#c8c8d8" }}>{cinema.name}</span>
-                      <div className="flex flex-wrap gap-1 justify-end shrink-0">
-                        {times.sort().map((t) => (
-                          <span key={t} className="text-xs font-mono px-2 py-0.5 rounded"
-                            style={{ background: "#2e2e3a", color: "#f2f2f5", border: "1px solid #3e3e50" }}>
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* Cinema grid */}
-      {!loading && !movieResults && cinemas.length > 0 && (
+      {/* Results */}
+      {!loading && cinemas.length > 0 && (
         <>
           <p className="text-xs" style={{ color: "#9898ac" }}>{cinemas.length}件の映画館が見つかりました</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

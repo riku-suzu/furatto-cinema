@@ -83,20 +83,6 @@ export async function searchNearbyCinemas(
     })
     .filter((c: { distance?: number }) => (c.distance ?? Infinity) <= radiusKm);
 
-  // 英語名の映画館は Details API で日本語名を取得
-  const isEnglish = (name: string) => /^[\x00-\x7F\s]+$/.test(name);
-  await Promise.all(
-    mapped.map(async (cinema: { id: string; name: string }) => {
-      if (!isEnglish(cinema.name)) return;
-      try {
-        const details = await getCinemaDetails(cinema.id);
-        if (details?.name && !isEnglish(details.name)) {
-          cinema.name = details.name;
-        }
-      } catch { /* keep original name */ }
-    })
-  );
-
   return mapped;
 }
 
