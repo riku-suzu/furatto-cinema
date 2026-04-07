@@ -129,10 +129,10 @@ export default function CinemasPage() {
 
       {/* Loading skeleton */}
       {(loading || locLoading) && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-lg overflow-hidden animate-pulse"
-              style={{ aspectRatio: "16/10", background: "#16161e" }} />
+            <div key={i} className="rounded-xl overflow-hidden animate-pulse h-24 sm:h-auto"
+              style={{ background: "#16161e", aspectRatio: undefined }} />
           ))}
         </div>
       )}
@@ -146,7 +146,7 @@ export default function CinemasPage() {
 
       {/* Results */}
       {!loading && cinemas.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {cinemas.map((cinema) => (
             <div
               key={cinema.id}
