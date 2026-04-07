@@ -23,29 +23,27 @@ export default function CinemasPage() {
       const results = await searchNearbyCinemas(c, r);
       const sorted = results.sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
       setCinemas(sorted);
+      setLoading(false); // すぐに表示
 
-      // Filter to only cinemas that have eiga.com schedule support
-      try {
-        const res = await fetch("/api/schedule/check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cinemas: sorted.map((c) => ({ id: c.id, name: c.name, address: c.address, lat: c.lat, lng: c.lng })),
-          }),
-        });
-        const data = await res.json();
-        // checkedPrefs === 0 はeiga.comへのアクセス失敗 → 全件表示のまま
-        if ((data.checkedPrefs ?? 0) > 0) {
-          const results: { id: string; found: boolean }[] = data.results ?? [];
-          const foundIds = new Set<string>(results.filter((r) => r.found).map((r) => r.id));
-          setCinemas(sorted.filter((c) => foundIds.has(c.id)));
-        }
-      } catch {
-        // チェック失敗時は全件表示のまま
-      }
+      // eiga.comチェックはバックグラウンドで実行
+      fetch("/api/schedule/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cinemas: sorted.map((c) => ({ id: c.id, name: c.name, address: c.address, lat: c.lat, lng: c.lng })),
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if ((data.checkedPrefs ?? 0) > 0) {
+            const checked: { id: string; found: boolean }[] = data.results ?? [];
+            const foundIds = new Set<string>(checked.filter((r) => r.found).map((r) => r.id));
+            setCinemas((prev) => prev.filter((c) => foundIds.has(c.id)));
+          }
+        })
+        .catch(() => { /* チェック失敗時は全件表示のまま */ });
     } catch {
       setError("映画館の取得に失敗しました。APIキーを確認してください。");
-    } finally {
       setLoading(false);
     }
   }, []);
