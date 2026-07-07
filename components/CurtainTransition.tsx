@@ -8,6 +8,8 @@ interface Props {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  /** 指定すると、クリック時にカーテン開始の代わりにこれを呼ぶ（trigger()で明示的に開始する運用向け） */
+  onClick?: () => void;
 }
 
 export interface CurtainHandle {
@@ -54,6 +56,7 @@ const CurtainTransition = forwardRef<CurtainHandle, Props>(function CurtainTrans
   children,
   className,
   style,
+  onClick,
 }, ref) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
@@ -65,6 +68,10 @@ const CurtainTransition = forwardRef<CurtainHandle, Props>(function CurtainTrans
   }), [phase]);
 
   const handleClick = () => {
+    if (onClick) {
+      onClick();
+      return;
+    }
     if (phase !== "idle") return;
     setPhase("ready");
   };

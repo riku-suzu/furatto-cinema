@@ -45,3 +45,7 @@ export interface Coordinates {
   lat: number;
   lng: number;
 }
+
+export interface NearbyScreening extends Screening {
+  cinema: Cinema;
+}

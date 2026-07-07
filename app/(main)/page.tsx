@@ -2,32 +2,48 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocation } from "@/contexts/LocationContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import FavoriteButton from "@/components/FavoriteButton";
 import CurtainTransition, { CurtainHandle } from "@/components/CurtainTransition";
 
+type Destination = "now" | "cinemas";
+
 export default function TopPage() {
   const { coords, loading, error, requestLocation } = useLocation();
   const { favorites } = useFavorites();
-  const curtainRef = useRef<CurtainHandle>(null);
-  const wasLoadingRef = useRef(false);
+  const curtainNowRef = useRef<CurtainHandle>(null);
+  const curtainCinemasRef = useRef<CurtainHandle>(null);
+  // ref (not state) so updating it doesn't retrigger this effect and race-cancel its own timeout
+  const pendingRef = useRef<Destination | null>(null);
+  const [pendingLabel, setPendingLabel] = useState<Destination | null>(null);
 
   useEffect(() => {
-    if (loading) wasLoadingRef.current = true;
-  }, [loading]);
-
-  useEffect(() => {
-    if (coords) {
-      sessionStorage.setItem("userCoords", JSON.stringify(coords));
-      if (wasLoadingRef.current) {
-        const t = setTimeout(() => curtainRef.current?.trigger(), 300);
-        return () => clearTimeout(t);
-      }
-    }
+    if (!coords) return;
+    sessionStorage.setItem("userCoords", JSON.stringify(coords));
+    if (!pendingRef.current) return;
+    const target = pendingRef.current;
+    pendingRef.current = null;
+    const ref = target === "now" ? curtainNowRef : curtainCinemasRef;
+    const t = setTimeout(() => {
+      ref.current?.trigger();
+      setPendingLabel(null);
+    }, 300);
+    return () => clearTimeout(t);
   }, [coords]);
+
+  const choose = (destination: Destination) => {
+    if (coords) {
+      (destination === "now" ? curtainNowRef : curtainCinemasRef).current?.trigger();
+      return;
+    }
+    if (loading) return;
+    pendingRef.current = destination;
+    setPendingLabel(destination);
+    requestLocation();
+  };
 
   return (
     <div>
@@ -52,69 +68,64 @@ export default function TopPage() {
               Now Playing Near You
             </p>
             <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.05]" style={{ color: "#f2f2f5" }}>
-              近くの映画館を<br />
+              今すぐ見れる映画を<br />
               <span style={{
                 background: "linear-gradient(135deg, #e5373a 0%, #ff6b6b 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text"
-              }}>今すぐ探す</span>
+              }}>探そう</span>
             </h1>
             <p className="text-base sm:text-lg" style={{ color: "#808090" }}>
               現在地から半径15km圏内の映画館と<br className="hidden sm:block" />上映スケジュールをリアルタイム表示
             </p>
           </div>
 
-          {!coords ? (
-            <div className="flex flex-col items-center gap-4">
-              <button
-                onClick={requestLocation}
-                disabled={loading}
-                className="inline-flex items-center gap-3 font-bold px-10 py-4 rounded-full text-lg text-white transition-all disabled:opacity-50"
-                style={{ background: "#e5373a", boxShadow: "0 0 40px rgba(229,55,58,0.35)" }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = "0 0 60px rgba(229,55,58,0.5)")}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = "0 0 40px rgba(229,55,58,0.35)")}
-              >
-                {loading ? (
-                  <>
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    位置情報を取得中...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    現在地から映画館を検索
-                  </>
-                )}
-              </button>
-              {error && (
-                <p className="text-sm px-4 py-2.5 rounded-xl" style={{ color: "#fca5a5", background: "rgba(229,55,58,0.1)", border: "1px solid rgba(229,55,58,0.2)" }}>
-                  {error}
-                </p>
+          <div className="flex flex-col items-center gap-4">
+            <CurtainTransition
+              ref={curtainNowRef}
+              href="/now"
+              onClick={() => choose("now")}
+              className="inline-flex items-center gap-3 font-bold px-10 py-4 rounded-full text-lg text-white transition-all"
+              style={{ background: "#e5373a", boxShadow: "0 0 40px rgba(229,55,58,0.35)" }}
+            >
+              {loading && pendingLabel === "now" ? (
+                <>
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  位置情報を取得中...
+                </>
+              ) : (
+                "今すぐ観れる映画を見る →"
               )}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-4">
-              <p className="text-sm font-semibold flex items-center gap-2" style={{ color: "#4ade80" }}>
-                <span className="inline-block w-2 h-2 rounded-full" style={{ background: "#4ade80", boxShadow: "0 0 8px #4ade80" }} />
-                現在地を取得しました
+            </CurtainTransition>
+            <CurtainTransition
+              ref={curtainCinemasRef}
+              href="/cinemas"
+              onClick={() => choose("cinemas")}
+              className="inline-flex items-center gap-3 font-bold px-10 py-4 rounded-full text-lg transition-all"
+              style={{ background: "rgba(255,255,255,0.06)", color: "#f2f2f5", border: "1px solid rgba(255,255,255,0.12)" }}
+            >
+              {loading && pendingLabel === "cinemas" ? (
+                <>
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  位置情報を取得中...
+                </>
+              ) : (
+                "周辺の映画館を見る →"
+              )}
+            </CurtainTransition>
+            {error && (
+              <p className="text-sm px-4 py-2.5 rounded-xl" style={{ color: "#fca5a5", background: "rgba(229,55,58,0.1)", border: "1px solid rgba(229,55,58,0.2)" }}>
+                {error}
               </p>
-              <CurtainTransition
-                ref={curtainRef}
-                href="/cinemas"
-                className="inline-flex items-center gap-2 font-bold px-10 py-4 rounded-full text-lg text-white transition-all"
-                style={{ background: "#e5373a", boxShadow: "0 0 40px rgba(229,55,58,0.35)" }}
-              >
-                周辺の映画館を見る →
-              </CurtainTransition>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Bottom fade */}

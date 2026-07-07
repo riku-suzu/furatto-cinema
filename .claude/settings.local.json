@@ -5,7 +5,13 @@
       "Bash(npx tsc:*)",
       "Bash(npm run:*)",
       "Bash(taskkill /PID 33104 /F)",
-      "Bash(taskkill /IM node.exe /F)"
+      "Bash(taskkill /IM node.exe /F)",
+      "Bash(node probe.mjs)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs -r kill -9)",
+      "Bash(nohup npm run dev)",
+      "Bash(disown)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)"
     ]
   }
 }
