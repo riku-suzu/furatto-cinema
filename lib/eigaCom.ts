@@ -264,6 +264,30 @@ export async function scrapeSchedule(
           isPast: past,
         });
       });
+
+      // Some chains (e.g. AEON Cinema) don't sell through eiga.com at all —
+      // they just link out to the theater's own official booking site.
+      td.find("a.official").each((_, slot) => {
+        const el = $(slot);
+        const startTime = el.text().trim();
+        const ticketUrl = el.attr("href");
+        if (!startTime) return;
+        const past = isScreeningPast(targetDate, startTime);
+
+        movieScreenings.push({
+          id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}-official`,
+          movieId: Number(movieId),
+          movieTitle,
+          posterPath,
+          startTime,
+          endTime: calcEndTime(startTime, runtime),
+          screen: "",
+          language,
+          format: "2D",
+          ticketUrl,
+          isPast: past,
+        });
+      });
     });
 
     if (movieScreenings.length > 0) {
