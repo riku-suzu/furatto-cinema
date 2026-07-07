@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useImperativeHandle, forwardRef } from "react";
+import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -60,6 +60,8 @@ const CurtainTransition = forwardRef<CurtainHandle, Props>(function CurtainTrans
 }, ref) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
+  const [isPending, startTransition] = useTransition();
+  const navStartedRef = useRef(false);
 
   useImperativeHandle(ref, () => ({
     trigger: () => {
@@ -91,12 +93,23 @@ const CurtainTransition = forwardRef<CurtainHandle, Props>(function CurtainTrans
     }
 
     if (phase === "closed") {
-      // Navigate after a brief hold, then open curtains after logo fades (300ms)
-      const t1 = setTimeout(() => router.push(href), 400);
-      const t2 = setTimeout(() => setPhase("opening"), 700);
+      // Navigate after a brief hold; opening is triggered once the transition
+      // below actually finishes (see the isPending effect), not on a fixed
+      // timer — otherwise the curtain can reopen before the new route has
+      // finished rendering, briefly flashing the old page again.
+      navStartedRef.current = false;
+      const t = setTimeout(() => {
+        navStartedRef.current = true;
+        startTransition(() => {
+          router.push(href);
+        });
+      }, 400);
+      // Safety net: if the transition never resolves for some reason, don't
+      // leave the curtain stuck closed forever.
+      const fallback = setTimeout(() => setPhase("opening"), 8000);
       return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
+        clearTimeout(t);
+        clearTimeout(fallback);
       };
     }
 
@@ -105,7 +118,15 @@ const CurtainTransition = forwardRef<CurtainHandle, Props>(function CurtainTrans
       const t = setTimeout(() => setPhase("idle"), 1600);
       return () => clearTimeout(t);
     }
-  }, [phase, href, router]);
+  }, [phase, href, router, startTransition]);
+
+  // Move from "closed" to "opening" only once the navigation transition
+  // triggered above has actually completed (new route rendered).
+  useEffect(() => {
+    if (phase === "closed" && navStartedRef.current && !isPending) {
+      setPhase("opening");
+    }
+  }, [isPending, phase]);
 
   const isOffScreen = phase === "ready" || phase === "opening";
   const hasTransition = phase !== "ready";

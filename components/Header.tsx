@@ -20,18 +20,6 @@ export default function Header() {
             onMouseLeave={e => (e.currentTarget.style.color = "#808090")}>
             トップ
           </Link>
-          <Link href="/cinemas" className="transition-colors" style={{ color: "#808090" }}
-            onMouseEnter={e => (e.currentTarget.style.color = "#f2f2f5")}
-            onMouseLeave={e => (e.currentTarget.style.color = "#808090")}>
-            映画館一覧
-          </Link>
-          <Link href="/now"
-            className="px-4 py-1.5 rounded-md text-sm font-bold text-white transition-all"
-            style={{ background: "#e5373a" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "#c62d30")}
-            onMouseLeave={e => (e.currentTarget.style.background = "#e5373a")}>
-            今すぐ観れる映画
-          </Link>
         </nav>
       </div>
     </header>

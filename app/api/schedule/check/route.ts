@@ -60,21 +60,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ results: [], checkedPrefs: 0 });
   }
 
-  // Step 2: check today's screenings in parallel for matched cinemas
+  // Step 2: check today's screenings in parallel for matched cinemas.
+  // `confirmed` = we actually scraped the theater page successfully (so a
+  // `found: false` means "confirmed no screenings today", not "unknown").
   const found = new Set<string>();
+  const confirmed = new Set<string>();
   await Promise.all(
     [...theaterUrls.entries()].map(async ([id, url]) => {
       try {
         const screenings = await scrapeSchedule(url, today);
+        confirmed.add(id);
         if (screenings.length > 0) found.add(id);
       } catch {
-        // scrape failed — exclude
+        // scrape failed — unknown, don't mark as confirmed-absent
       }
     })
   );
 
   return NextResponse.json({
-    results: cinemas.map((c) => ({ id: c.id, found: found.has(c.id) })),
+    results: cinemas.map((c) => ({
+      id: c.id,
+      found: found.has(c.id),
+      // false only when we positively confirmed this cinema has no screenings today;
+      // unmatched/unscraped cinemas stay unknown so callers don't hide them incorrectly
+      confirmedAbsent: confirmed.has(c.id) && !found.has(c.id),
+    })),
     checkedPrefs,
   });
 }

@@ -109,18 +109,13 @@ export default function NowPlayingPage() {
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-4 px-4 py-3 rounded-xl transition-all group"
-              style={{ background: "#16161e", border: "1px solid rgba(255,255,255,0.06)" }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(229,55,58,0.4)")}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}
+              style={{
+                background: i === 0 ? "rgba(229,55,58,0.14)" : "#16161e",
+                border: i === 0 ? "1px solid rgba(229,55,58,0.5)" : "1px solid rgba(255,255,255,0.06)",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(229,55,58,0.7)")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = i === 0 ? "rgba(229,55,58,0.5)" : "rgba(255,255,255,0.06)")}
             >
-              {/* Rank */}
-              {i === 0 && (
-                <span className="flex-shrink-0 text-xs font-black px-2 py-1 rounded-md text-white"
-                  style={{ background: "#e5373a" }}>
-                  最速
-                </span>
-              )}
-
               {/* Poster */}
               <div className="relative w-9 h-13 flex-shrink-0 rounded-md overflow-hidden" style={{ background: "#1e1e28", width: 36, height: 52 }}>
                 {s.posterPath && !s.posterPath.startsWith("/images/movie/") ? (

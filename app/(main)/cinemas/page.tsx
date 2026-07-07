@@ -36,15 +36,17 @@ export default function CinemasPage() {
         .then((res) => res.json())
         .then((data) => {
           if ((data.checkedPrefs ?? 0) > 0) {
-            const checked: { id: string; found: boolean }[] = data.results ?? [];
-            const foundIds = new Set<string>(checked.filter((r) => r.found).map((r) => r.id));
+            const checked: { id: string; found: boolean; confirmedAbsent?: boolean }[] = data.results ?? [];
+            // Only hide cinemas we positively confirmed have no screenings today —
+            // unmatched/unscraped cinemas (e.g. chain-name mismatches) stay visible.
+            const absentIds = new Set<string>(checked.filter((r) => r.confirmedAbsent).map((r) => r.id));
+            if (absentIds.size === 0) return;
             setCinemas((prev) => {
-              const toRemove = prev.filter((c) => !foundIds.has(c.id));
+              const toRemove = prev.filter((c) => absentIds.has(c.id));
               if (toRemove.length === 0) return prev;
-              const hideSet = new Set(toRemove.map((c) => c.id));
-              setHiddenIds(hideSet);
+              setHiddenIds(absentIds);
               setTimeout(() => {
-                setCinemas((p) => p.filter((c) => foundIds.has(c.id)));
+                setCinemas((p) => p.filter((c) => !absentIds.has(c.id)));
                 setHiddenIds(new Set());
               }, 400);
               return prev;
