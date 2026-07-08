@@ -8,8 +8,13 @@ import { useLocation } from "@/contexts/LocationContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import FavoriteButton from "@/components/FavoriteButton";
 import CurtainTransition, { CurtainHandle } from "@/components/CurtainTransition";
+import { searchNearbyCinemas } from "@/lib/googlePlaces";
 
 type Destination = "now" | "cinemas";
+
+// "今すぐ観れる映画" only searches this radius — a cinema further than this
+// isn't reachable "right now", so there's no point listing it.
+const NOW_RADIUS_METERS = 5000;
 
 export default function TopPage() {
   const { coords, loading, error, requestLocation } = useLocation();
@@ -19,24 +24,60 @@ export default function TopPage() {
   // ref (not state) so updating it doesn't retrigger this effect and race-cancel its own timeout
   const pendingRef = useRef<Destination | null>(null);
   const [pendingLabel, setPendingLabel] = useState<Destination | null>(null);
+  // null = unknown/checking, otherwise the count of cinemas found within NOW_RADIUS_METERS
+  const [nearbyCount, setNearbyCount] = useState<number | null>(null);
 
+  // Whenever we get coords, cache them and check whether any cinema is within
+  // the "now" radius at all, so the button can be disabled when there's none.
   useEffect(() => {
-    if (!coords) return;
+    if (!coords) {
+      setNearbyCount(null);
+      return;
+    }
     sessionStorage.setItem("userCoords", JSON.stringify(coords));
-    if (!pendingRef.current) return;
-    const target = pendingRef.current;
-    pendingRef.current = null;
-    const ref = target === "now" ? curtainNowRef : curtainCinemasRef;
-    const t = setTimeout(() => {
-      ref.current?.trigger();
-      setPendingLabel(null);
-    }, 300);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    setNearbyCount(null);
+    searchNearbyCinemas(coords, NOW_RADIUS_METERS)
+      .then((cinemas) => { if (!cancelled) setNearbyCount(cinemas.length); })
+      .catch(() => { if (!cancelled) setNearbyCount(0); });
+    return () => { cancelled = true; };
   }, [coords]);
 
+  // Resolve whichever navigation is pending once we have what it needs:
+  // "cinemas" only needs coords; "now" also waits on the nearby-cinema check.
+  useEffect(() => {
+    if (!coords || !pendingRef.current) return;
+    const target = pendingRef.current;
+    if (target === "cinemas") {
+      pendingRef.current = null;
+      const t = setTimeout(() => {
+        curtainCinemasRef.current?.trigger();
+        setPendingLabel(null);
+      }, 300);
+      return () => clearTimeout(t);
+    }
+    // target === "now"
+    if (nearbyCount === null) return; // still checking
+    pendingRef.current = null;
+    setPendingLabel(null);
+    if (nearbyCount > 0) {
+      const t = setTimeout(() => curtainNowRef.current?.trigger(), 300);
+      return () => clearTimeout(t);
+    }
+    // nearbyCount === 0: stay put, button will render as disabled with a note
+  }, [coords, nearbyCount]);
+
+  const nowDisabled = coords !== null && nearbyCount === 0;
+
   const choose = (destination: Destination) => {
+    if (destination === "now" && nowDisabled) return;
     if (coords) {
-      (destination === "now" ? curtainNowRef : curtainCinemasRef).current?.trigger();
+      if (destination === "now") {
+        if (nearbyCount === null) return; // still checking, ignore extra clicks
+        curtainNowRef.current?.trigger();
+      } else {
+        curtainCinemasRef.current?.trigger();
+      }
       return;
     }
     if (loading) return;
@@ -87,20 +128,30 @@ export default function TopPage() {
               href="/now"
               onClick={() => choose("now")}
               className="inline-flex items-center gap-3 font-bold px-10 py-4 rounded-full text-lg text-white transition-all"
-              style={{ background: "#e5373a", boxShadow: "0 0 40px rgba(229,55,58,0.35)" }}
+              style={{
+                background: "#e5373a",
+                boxShadow: "0 0 40px rgba(229,55,58,0.35)",
+                opacity: nowDisabled ? 0.4 : 1,
+                cursor: nowDisabled ? "not-allowed" : "pointer",
+              }}
             >
-              {loading && pendingLabel === "now" ? (
+              {pendingLabel === "now" ? (
                 <>
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  位置情報を取得中...
+                  {loading ? "位置情報を取得中..." : "近くの映画館を確認中..."}
                 </>
               ) : (
                 "今すぐ観れる映画を見る →"
               )}
             </CurtainTransition>
+            {nowDisabled && (
+              <p className="text-sm px-4 py-2.5 rounded-xl text-center" style={{ color: "#fca5a5", background: "rgba(229,55,58,0.1)", border: "1px solid rgba(229,55,58,0.2)" }}>
+                現在地から{NOW_RADIUS_METERS / 1000}km圏内に映画館が見つかりませんでした
+              </p>
+            )}
             <CurtainTransition
               ref={curtainCinemasRef}
               href="/cinemas"

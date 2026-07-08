@@ -10,7 +10,7 @@ import { searchNearbyCinemas } from "@/lib/googlePlaces";
 import { getPosterUrl } from "@/lib/tmdb";
 import { Coordinates, NearbyScreening } from "@/types";
 
-const RADIUS_METERS = 10000;
+const RADIUS_METERS = 5000;
 
 export default function NowPlayingPage() {
   const { coords, loading: locLoading, error: locError, requestLocation } = useLocation();
