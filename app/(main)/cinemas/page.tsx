@@ -36,17 +36,18 @@ export default function CinemasPage() {
         .then((res) => res.json())
         .then((data) => {
           if ((data.checkedPrefs ?? 0) > 0) {
-            const checked: { id: string; found: boolean; confirmedAbsent?: boolean }[] = data.results ?? [];
-            // Only hide cinemas we positively confirmed have no screenings today —
-            // unmatched/unscraped cinemas (e.g. chain-name mismatches) stay visible.
-            const absentIds = new Set<string>(checked.filter((r) => r.confirmedAbsent).map((r) => r.id));
-            if (absentIds.size === 0) return;
+            const checked: { id: string; matched: boolean }[] = data.results ?? [];
+            // Only list cinemas that are actually tracked on eiga.com — Google Places
+            // tags plenty of things "movie_theater" (indie screening rooms, event
+            // spaces, etc.) that eiga.com doesn't cover.
+            const unmatchedIds = new Set<string>(checked.filter((r) => !r.matched).map((r) => r.id));
+            if (unmatchedIds.size === 0) return;
             setCinemas((prev) => {
-              const toRemove = prev.filter((c) => absentIds.has(c.id));
+              const toRemove = prev.filter((c) => unmatchedIds.has(c.id));
               if (toRemove.length === 0) return prev;
-              setHiddenIds(absentIds);
+              setHiddenIds(unmatchedIds);
               setTimeout(() => {
-                setCinemas((p) => p.filter((c) => !absentIds.has(c.id)));
+                setCinemas((p) => p.filter((c) => !unmatchedIds.has(c.id)));
                 setHiddenIds(new Set());
               }, 400);
               return prev;
