@@ -1,23 +1,31 @@
 "use client";
 
-import { useEffect, useState, useRef, useImperativeHandle, useTransition, Ref } from "react";
-import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
-interface Props {
-  href: string;
-  children: React.ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
-  /** 指定すると、クリック時にカーテン開始の代わりにこれを呼ぶ（trigger()で明示的に開始する運用向け） */
-  onClick?: () => void;
-  ref?: Ref<CurtainHandle>;
-}
-
-export interface CurtainHandle {
-  trigger: () => void;
-}
+// ページ遷移の幕。レイアウトに置いてページをまたいで生き残るようにしてあるので、
+// 遷移先のページが描画されてから幕が開く（ページ側に置くと遷移と同時に消えてしまう）。
 
 type Phase = "idle" | "ready" | "closing" | "closed" | "opening";
+
+const CLOSE_MS = 1500; // 幕が閉じきるまで
+const HOLD_MS = 400;   // 閉じた状態でロゴを見せてから遷移する
+const OPEN_DELAY_MS = 200; // 遷移先の最初の描画を待ってから開く
+const OPEN_MS = 1600;  // 幕が開ききるまで
+const FALLBACK_MS = 8000; // 遷移が終わらなくても幕を開ける
+
+interface CurtainContextType {
+  /** 幕を閉じてからhrefへ遷移し、遷移先で幕を開ける */
+  navigate: (href: string) => void;
+}
+
+const CurtainContext = createContext<CurtainContextType | null>(null);
+
+export function useCurtain() {
+  const ctx = useContext(CurtainContext);
+  if (!ctx) throw new Error("useCurtain must be used within CurtainProvider");
+  return ctx;
+}
 
 function CurtainFolds({ side }: { side: "left" | "right" }) {
   const folds = [0.15, 0.35, 0.55, 0.75, 0.9];
@@ -75,95 +83,65 @@ function Curtain({ side, isOffScreen, hasTransition }: { side: "left" | "right";
   );
 }
 
-export default function CurtainTransition({
-  href,
-  children,
-  className,
-  style,
-  onClick,
-  ref,
-}: Props) {
+export function CurtainProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [phase, setPhase] = useState<Phase>("idle");
-  const [isPending, startTransition] = useTransition();
-  const navStartedRef = useRef(false);
+  const targetRef = useRef<string | null>(null);
 
-  useImperativeHandle(ref, () => ({
-    trigger: () => {
-      if (phase === "idle") setPhase("ready");
-    },
-  }), [phase]);
-
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-      return;
-    }
-    if (phase !== "idle") return;
-    setPhase("ready");
-  };
+  const navigate = useCallback((href: string) => {
+    setPhase((p) => {
+      if (p !== "idle") return p;
+      targetRef.current = href;
+      return "ready";
+    });
+  }, []);
 
   useEffect(() => {
     if (phase === "ready") {
-      const raf = requestAnimationFrame(() =>
-        requestAnimationFrame(() => setPhase("closing"))
-      );
-      return () => cancelAnimationFrame(raf);
+      // 画面外の位置で一度描画してから閉じ始める（transitionを効かせるため）
+      let raf2 = 0;
+      const raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => setPhase("closing"));
+      });
+      return () => {
+        cancelAnimationFrame(raf1);
+        cancelAnimationFrame(raf2);
+      };
     }
-
     if (phase === "closing") {
-      // Switch to "closed" after curtains fully meet (1.5s)
-      const t = setTimeout(() => setPhase("closed"), 1500);
+      const t = setTimeout(() => setPhase("closed"), CLOSE_MS);
       return () => clearTimeout(t);
     }
-
     if (phase === "closed") {
-      // Navigate after a brief hold; opening is triggered once the transition
-      // below actually finishes (see the isPending effect), not on a fixed
-      // timer — otherwise the curtain can reopen before the new route has
-      // finished rendering, briefly flashing the old page again.
-      navStartedRef.current = false;
-      const t = setTimeout(() => {
-        navStartedRef.current = true;
-        startTransition(() => {
-          router.push(href);
-        });
-      }, 400);
-      // Safety net: if the transition never resolves for some reason, don't
-      // leave the curtain stuck closed forever.
-      const fallback = setTimeout(() => setPhase("opening"), 8000);
+      const t = setTimeout(() => targetRef.current && router.push(targetRef.current), HOLD_MS);
+      const fallback = setTimeout(() => setPhase("opening"), FALLBACK_MS);
       return () => {
         clearTimeout(t);
         clearTimeout(fallback);
       };
     }
-
     if (phase === "opening") {
-      // Wait for curtains to fully leave screen (1.4s)
-      const t = setTimeout(() => setPhase("idle"), 1600);
+      const t = setTimeout(() => setPhase("idle"), OPEN_MS);
       return () => clearTimeout(t);
     }
-  }, [phase, href, router, startTransition]);
+  }, [phase, router]);
 
-  // Move from "closed" to "opening" only once the navigation transition
-  // triggered above has actually completed (new route rendered).
+  // 遷移先のページに切り替わったら幕を開ける
   useEffect(() => {
-    if (phase === "closed" && navStartedRef.current && !isPending) {
-      setPhase("opening");
-    }
-  }, [isPending, phase]);
+    if (phase !== "closed" || pathname !== targetRef.current) return;
+    const t = setTimeout(() => setPhase("opening"), OPEN_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [pathname, phase]);
 
   const isOffScreen = phase === "ready" || phase === "opening";
   const hasTransition = phase !== "ready";
-
   // Logo is visible only during closing + closed phases
   const logoVisible = phase === "closing" || phase === "closed";
 
   return (
-    <>
-      <button onClick={handleClick} className={className} style={style}>
-        {children}
-      </button>
+    <CurtainContext.Provider value={{ navigate }}>
+      {children}
 
       {phase !== "idle" && (
         <div className="fixed inset-0 z-[9999] pointer-events-none flex overflow-hidden">
@@ -219,6 +197,6 @@ export default function CurtainTransition({
           </div>
         </div>
       )}
-    </>
+    </CurtainContext.Provider>
   );
 }

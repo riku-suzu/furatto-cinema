@@ -10,7 +10,7 @@ import BackLink from "@/components/BackLink";
 import EmptyState from "@/components/EmptyState";
 import ErrorBanner from "@/components/ErrorBanner";
 import LocationPrompt from "@/components/LocationPrompt";
-import NearbyScreeningRow from "@/components/NearbyScreeningRow";
+import NowTimeline from "@/components/NowTimeline";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NearbyScreening } from "@/types";
@@ -39,6 +39,8 @@ export default function NowPlayingPage() {
 
   return (
     <div className="space-y-8">
+      <BackLink href="/" position="top">トップに戻る</BackLink>
+
       <div>
         <h1 className="text-3xl font-black tracking-tight">今すぐ観れる映画</h1>
         <p className="text-sm mt-1 text-muted-foreground">
@@ -51,22 +53,19 @@ export default function NowPlayingPage() {
       )}
 
       {busy && hasCoords && (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[76px] rounded-xl bg-card" />
+        <div className="space-y-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-3 sm:grid sm:grid-cols-[6rem_1fr] sm:gap-x-6 sm:space-y-0">
+              <Skeleton className="mt-4 h-6 w-16 bg-card sm:ml-auto" />
+              <Skeleton className="h-24 rounded-2xl bg-card" />
+            </div>
           ))}
         </div>
       )}
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
-      {!busy && screenings.length > 0 && (
-        <div className="space-y-2">
-          {screenings.map((s, i) => (
-            <NearbyScreeningRow key={s.id + s.cinema.id} screening={s} highlight={i === 0} />
-          ))}
-        </div>
-      )}
+      {!busy && screenings.length > 0 && <NowTimeline screenings={screenings} />}
 
       {!busy && hasCoords && screenings.length === 0 && !error && (
         <EmptyState icon={Clapperboard} title="これから始まる上映が見つかりませんでした">

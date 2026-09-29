@@ -2,30 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronRight, Loader2, MapPin, Star, Ticket } from "lucide-react";
 import { useLocation } from "@/contexts/LocationContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
+import { useCurtain } from "@/contexts/CurtainContext";
 import FavoriteButton from "@/components/FavoriteButton";
-import CurtainTransition, { CurtainHandle } from "@/components/CurtainTransition";
 import ErrorBanner from "@/components/ErrorBanner";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { fetchNearbyCinemas } from "@/lib/api";
 import { NOW_RADIUS_METERS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { CalendarClock, ChevronRight, Loader2, MapPin, Star, Ticket } from "lucide-react";
 
 type Destination = "now" | "cinemas";
 
-const FEATURES = [
-  { icon: MapPin, title: "現在地から検索", desc: "GPSで半径15km圏内の映画館を自動検索" },
-  { icon: CalendarClock, title: "上映スケジュール", desc: "映画.comのリアルタイムデータで作品・時間を確認" },
-  { icon: Star, title: "お気に入り保存", desc: "よく行く映画館をすぐアクセス" },
-];
+const HREF: Record<Destination, string> = { now: "/now", cinemas: "/cinemas" };
 
 export default function TopPage() {
   const { coords, loading, error, requestLocation } = useLocation();
-  const curtainNowRef = useRef<CurtainHandle>(null);
-  const curtainCinemasRef = useRef<CurtainHandle>(null);
-  // ref (not state) so updating it doesn't retrigger this effect and race-cancel its own timeout
+  const { navigate } = useCurtain();
+  // 位置情報の取得待ちの間に押された遷移先
   const pendingRef = useRef<Destination | null>(null);
   const [pendingLabel, setPendingLabel] = useState<Destination | null>(null);
   // null = unknown/checking, otherwise the count of cinemas found within NOW_RADIUS_METERS
@@ -43,48 +38,39 @@ export default function TopPage() {
     return () => { cancelled = true; };
   }, [coords]);
 
-  // Resolve whichever navigation is pending once we have what it needs:
-  // "cinemas" only needs coords; "now" also waits on the nearby-cinema check.
+  // 位置情報の取得待ちだった遷移を、必要なものが揃ったら実行する。
+  // "cinemas" は座標だけ、"now" は近くに映画館があるかの確認結果も待つ。
   useEffect(() => {
-    if (!coords || !pendingRef.current) return;
     const target = pendingRef.current;
-    if (target === "cinemas") {
-      pendingRef.current = null;
-      const t = setTimeout(() => {
-        curtainCinemasRef.current?.trigger();
-        setPendingLabel(null);
-      }, 300);
-      return () => clearTimeout(t);
-    }
-    // target === "now"
-    if (nearbyCount === null) return; // still checking
+    if (!coords || !target) return;
+    if (target === "now" && nearbyCount === null) return; // still checking
     pendingRef.current = null;
     setPendingLabel(null);
-    if (nearbyCount > 0) {
-      const t = setTimeout(() => curtainNowRef.current?.trigger(), 300);
-      return () => clearTimeout(t);
-    }
     // nearbyCount === 0: stay put, button will render as disabled with a note
-  }, [coords, nearbyCount]);
+    if (target === "cinemas" || nearbyCount! > 0) navigate(HREF[target]);
+  }, [coords, nearbyCount, navigate]);
 
   const nowDisabled = coords !== null && nearbyCount === 0;
 
   const choose = (destination: Destination) => {
     if (destination === "now" && nowDisabled) return;
-    if (coords) {
-      if (destination === "now") {
-        if (nearbyCount === null) return; // still checking, ignore extra clicks
-        curtainNowRef.current?.trigger();
-      } else {
-        curtainCinemasRef.current?.trigger();
-      }
+    if (coords && !(destination === "now" && nearbyCount === null)) {
+      navigate(HREF[destination]);
       return;
     }
-    if (loading) return;
+    if (pendingRef.current) return; // already waiting
     pendingRef.current = destination;
     setPendingLabel(destination);
-    requestLocation();
+    if (!coords && !loading) requestLocation();
   };
+
+  // 位置情報の取得に失敗したら待機を解除する
+  useEffect(() => {
+    if (error) {
+      pendingRef.current = null;
+      setPendingLabel(null);
+    }
+  }, [error]);
 
   return (
     <div>
@@ -122,12 +108,11 @@ export default function TopPage() {
           </div>
 
           <div className="flex flex-col items-center gap-3">
-            <CurtainTransition
-              ref={curtainNowRef}
-              href="/now"
+            <Button
+              size="lg"
               onClick={() => choose("now")}
+              aria-disabled={nowDisabled}
               className={cn(
-                buttonVariants({ size: "lg" }),
                 "h-14 gap-2.5 rounded-full px-9 text-lg font-bold shadow-[0_0_40px_rgba(229,55,58,0.35)] hover:bg-primary hover:shadow-[0_0_56px_rgba(229,55,58,0.5)] [&_svg:not([class*='size-'])]:size-5",
                 nowDisabled && "opacity-40 cursor-not-allowed hover:shadow-[0_0_40px_rgba(229,55,58,0.35)]"
               )}
@@ -144,22 +129,19 @@ export default function TopPage() {
                   <ChevronRight />
                 </>
               )}
-            </CurtainTransition>
+            </Button>
             {nowDisabled && (
               <ErrorBanner className="w-auto">
                 現在地から{NOW_RADIUS_METERS / 1000}km圏内に映画館が見つかりませんでした
               </ErrorBanner>
             )}
-            <CurtainTransition
-              ref={curtainCinemasRef}
-              href="/cinemas"
+            <Button
+              variant="outline"
+              size="lg"
               onClick={() => choose("cinemas")}
-              className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "h-14 gap-2.5 rounded-full px-9 text-lg font-bold [&_svg:not([class*='size-'])]:size-5"
-              )}
+              className="h-14 gap-2.5 rounded-full px-9 text-lg font-bold [&_svg:not([class*='size-'])]:size-5"
             >
-              {loading && pendingLabel === "cinemas" ? (
+              {pendingLabel === "cinemas" ? (
                 <>
                   <Loader2 className="animate-spin" />
                   位置情報を取得中...
@@ -170,7 +152,7 @@ export default function TopPage() {
                   周辺の映画館を見る
                 </>
               )}
-            </CurtainTransition>
+            </Button>
             {error && <ErrorBanner className="w-auto">{error}</ErrorBanner>}
           </div>
         </div>
@@ -180,21 +162,6 @@ export default function TopPage() {
       </section>
 
       <FavoritesSection />
-
-      {/* ── Features ── */}
-      <section className="mt-20 pt-12 pb-8 border-t">
-        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="rounded-xl border bg-card/50 p-6">
-              <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <f.icon className="size-5" />
-              </div>
-              <dt className="font-bold text-sm">{f.title}</dt>
-              <dd className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.desc}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
     </div>
   );
 }

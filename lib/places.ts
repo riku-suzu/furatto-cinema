@@ -8,7 +8,6 @@ export interface PlaceResult {
   name: string;
   formatted_address?: string;
   geometry: { location: Coordinates };
-  rating?: number;
   photos?: Array<{ photo_reference: string }>;
 }
 

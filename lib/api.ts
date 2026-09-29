@@ -33,9 +33,9 @@ export async function fetchCinema(id: string): Promise<Cinema> {
   return data.cinema;
 }
 
-/** 1館分の指定日のスケジュール */
-export async function fetchSchedule(cinemaId: string, date: string): Promise<Screening[]> {
-  const p = new URLSearchParams({ id: cinemaId, date });
-  const data = await getJson<{ screenings: Screening[] }>(`/api/schedule?${p}`);
-  return data.screenings;
+/** 1館分の、eiga.comに載っている全日付のスケジュール */
+export async function fetchSchedules(
+  cinemaId: string
+): Promise<{ dates: string[]; schedules: Record<string, Screening[]> }> {
+  return getJson(`/api/schedule?${new URLSearchParams({ id: cinemaId })}`);
 }

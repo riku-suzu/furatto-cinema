@@ -204,17 +204,19 @@ function parseRuntime(text: string): number {
   return m ? Number(m[1]) : 0;
 }
 
-/** eiga.comの映画館ページから指定日のスケジュールをパース */
-export async function scrapeSchedule(
-  theaterPath: string,
-  targetDate: string // "YYYY-MM-DD"
-): Promise<Screening[]> {
-  const dateKey = targetDate.replace(/-/g, ""); // "YYYYMMDD"
+/** 映画館ページに載っている日付ごとのスケジュール（eiga.comは今日から3日分） */
+export interface TheaterSchedules {
+  dates: string[]; // "YYYY-MM-DD"、昇順
+  schedules: Record<string, Screening[]>;
+}
+
+/** eiga.comの映画館ページから、載っている全日付のスケジュールをまとめてパース */
+export async function scrapeSchedules(theaterPath: string): Promise<TheaterSchedules> {
   const html = await fetchHtml(`${EIGA_BASE}${theaterPath}`);
   const $ = cheerio.load(html);
 
-  // 映画ごとにscreeningsと公開日を収集
-  const movieGroups: Array<{ releaseDate: string; screenings: Screening[] }> = [];
+  // 日付ごとに、映画単位のscreeningsと公開日を集める
+  const groupsByDate = new Map<string, Array<{ releaseDate: string; screenings: Screening[] }>>();
 
   $("section[id^='m']").each((_, section) => {
     const movieId = $(section).attr("id")?.replace("m", "");
@@ -230,7 +232,7 @@ export async function scrapeSchedule(
     const releaseDate = parseReleaseDate(releaseText);
     const runtime = parseRuntime(dataSpans.eq(1).text() || "");
 
-    const movieScreenings: Screening[] = [];
+    const screeningsByDate = new Map<string, Screening[]>();
 
     $(section).find(".movie-schedule").each((_, schedBlock) => {
       const typeEl = $(schedBlock).find(".type-subtitled, .type-dubbed").first();
@@ -240,55 +242,71 @@ export async function scrapeSchedule(
         ? "日本語吹替"
         : undefined;
 
-      const td = $(schedBlock).find(`td[data-date="${dateKey}"]`);
-      if (!td.length) return;
+      $(schedBlock).find("td[data-date]").each((_, cell) => {
+        const td = $(cell);
+        const dateKey = td.attr("data-date") || ""; // "YYYYMMDD"
+        if (!/^\d{8}$/.test(dateKey)) return;
+        const date = `${dateKey.slice(0, 4)}-${dateKey.slice(4, 6)}-${dateKey.slice(6)}`;
+        const list = screeningsByDate.get(date) ?? [];
+        screeningsByDate.set(date, list);
 
-      // 各スロットは "8:25<small>～10:20</small>" の形（終了時刻はない場合もある）
-      const addScreening = (slot: Parameters<typeof $>[0], idSuffix: string, fields: Partial<Screening>) => {
-        const el = $(slot);
-        const startTime = el.clone().children("small").remove().end().text().trim();
-        if (!startTime) return;
-        const endRaw = el.find("small").text().replace("～", "").trim();
-        movieScreenings.push({
-          id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}${idSuffix}`,
-          movieId: Number(movieId),
-          movieTitle,
-          posterPath,
-          startTime,
-          endTime: endRaw || addMinutes(startTime, runtime),
-          screen: "",
-          language,
-          format: "2D",
-          isPast: isPastJst(targetDate, startTime),
-          ...fields,
+        // 各スロットは "8:25<small>～10:20</small>" の形（終了時刻はない場合もある）
+        const addScreening = (slot: Parameters<typeof $>[0], idSuffix: string, fields: Partial<Screening>) => {
+          const el = $(slot);
+          const startTime = el.clone().children("small").remove().end().text().trim();
+          if (!startTime) return;
+          const endRaw = el.find("small").text().replace("～", "").trim();
+          list.push({
+            id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}${idSuffix}`,
+            movieId: Number(movieId),
+            movieTitle,
+            posterPath,
+            startTime,
+            endTime: endRaw || addMinutes(startTime, runtime),
+            screen: "",
+            language,
+            format: "2D",
+            isPast: isPastJst(date, startTime),
+            ...fields,
+          });
+        };
+
+        // 購入可能な上映（eiga.com経由のチケット販売）
+        td.find("a.btn[class*='ticket']").each((_, slot) => {
+          addScreening(slot, "", { ticketUrl: $(slot).attr("href"), booking: "ticket" });
         });
-      };
 
-      // 購入可能な上映（eiga.com経由のチケット販売）
-      td.find("a.btn[class*='ticket']").each((_, slot) => {
-        addScreening(slot, "", { ticketUrl: $(slot).attr("href") });
-      });
+        // 販売終了（満席 or 上映開始済み）
+        td.find("span.btn.off").each((_, slot) => {
+          addScreening(slot, "-off", { availableSeats: 0, totalSeats: 1 });
+        });
 
-      // 販売終了（満席 or 上映開始済み）
-      td.find("span.btn.off").each((_, slot) => {
-        addScreening(slot, "-off", { availableSeats: 0, totalSeats: 1 });
-      });
-
-      // Some chains (e.g. AEON Cinema) don't sell through eiga.com at all —
-      // they just link out to the theater's own official booking site.
-      td.find("a.official").each((_, slot) => {
-        addScreening(slot, "-official", { ticketUrl: $(slot).attr("href") });
+        // Some chains (e.g. AEON Cinema) don't sell through eiga.com at all —
+        // they just link out to the theater's own official booking site.
+        td.find("a.official").each((_, slot) => {
+          addScreening(slot, "-official", { ticketUrl: $(slot).attr("href"), booking: "official" });
+        });
       });
     });
 
-    if (movieScreenings.length > 0) {
-      movieGroups.push({ releaseDate, screenings: movieScreenings });
+    for (const [date, screenings] of screeningsByDate) {
+      if (!groupsByDate.has(date)) groupsByDate.set(date, []);
+      if (screenings.length > 0) groupsByDate.get(date)!.push({ releaseDate, screenings });
     }
   });
 
   // 公開日の新しい順（降順）にソートしてフラット化、各映画内は上映時間順
-  movieGroups.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
-  return movieGroups.flatMap((g) =>
-    g.screenings.sort((a, b) => compareTime(a.startTime, b.startTime))
-  );
+  const dates = [...groupsByDate.keys()].sort();
+  const schedules: Record<string, Screening[]> = {};
+  for (const date of dates) {
+    const groups = groupsByDate.get(date)!;
+    groups.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+    schedules[date] = groups.flatMap((g) => g.screenings.sort((a, b) => compareTime(a.startTime, b.startTime)));
+  }
+  return { dates, schedules };
+}
+
+/** 指定日のスケジュール（ページに載っていない日なら空） */
+export async function scrapeSchedule(theaterPath: string, date: string): Promise<Screening[]> {
+  return (await scrapeSchedules(theaterPath)).schedules[date] ?? [];
 }

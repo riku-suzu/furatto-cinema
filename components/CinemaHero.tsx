@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Clapperboard, ExternalLink, Navigation, Star } from "lucide-react";
+import { Clapperboard, ExternalLink, Navigation } from "lucide-react";
 import { Cinema } from "@/types";
 import { Button } from "@/components/ui/button";
 import FavoriteButton from "./FavoriteButton";
@@ -25,12 +25,6 @@ export default function CinemaHero({ cinema }: { cinema: Cinema }) {
           <div className="min-w-0">
             <h1 className="text-2xl font-black leading-tight text-white drop-shadow-lg sm:text-3xl">{cinema.name}</h1>
             <p className="mt-1.5 text-sm text-white/60 drop-shadow">{cinema.address}</p>
-            {cinema.rating !== undefined && (
-              <p className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-gold">
-                <Star className="size-4 fill-current" />
-                {cinema.rating.toFixed(1)}
-              </p>
-            )}
           </div>
           <FavoriteButton cinema={cinema} className="size-10 flex-shrink-0 [&_svg]:size-5" />
         </div>

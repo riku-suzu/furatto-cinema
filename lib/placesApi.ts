@@ -28,7 +28,7 @@ async function getPlacesJson(url: string) {
   return data;
 }
 
-const FIELDS = "place_id,name,formatted_address,geometry,rating,photos";
+const FIELDS = "place_id,name,formatted_address,geometry,photos";
 
 /** テキスト（例: "TOHOシネマズ 新宿 東京都"）から場所を1件引く */
 export async function findPlace(query: string): Promise<PlaceResult | null> {

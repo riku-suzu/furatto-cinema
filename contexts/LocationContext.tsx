@@ -4,9 +4,9 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
   useCallback,
   useMemo,
+  useSyncExternalStore,
   ReactNode,
 } from "react";
 import { Coordinates } from "@/types";
@@ -23,14 +23,24 @@ const LocationContext = createContext<LocationContextType | null>(null);
 // 取得した現在地はタブを閉じるまで保持し、リロード後も一覧ページで使い回す
 const COORDS_KEY = "userCoords";
 
+// useSyncExternalStore は同じ値なら同じ参照を返す必要があるので、文字列ごとにキャッシュする
+let lastRaw: string | null = null;
+let lastCoords: Coordinates | null = null;
+
 function readStoredCoords(): Coordinates | null {
   try {
-    const stored = sessionStorage.getItem(COORDS_KEY);
-    return stored ? (JSON.parse(stored) as Coordinates) : null;
+    const raw = sessionStorage.getItem(COORDS_KEY);
+    if (raw !== lastRaw) {
+      lastRaw = raw;
+      lastCoords = raw ? (JSON.parse(raw) as Coordinates) : null;
+    }
+    return lastCoords;
   } catch {
     return null;
   }
 }
+
+const noopSubscribe = () => () => {};
 
 const ERROR_MESSAGES: Record<number, string> = {
   1: "位置情報へのアクセスが拒否されました。ブラウザの設定で許可してください",
@@ -96,11 +106,8 @@ export function useLocation() {
  */
 export function useResolvedCoords(): Coordinates | null {
   const { coords } = useLocation();
-  const [stored, setStored] = useState<Coordinates | null>(null);
-
-  useEffect(() => {
-    if (!coords) setStored(readStoredCoords());
-  }, [coords]);
-
+  // ページ内遷移では最初の描画から読めるので「位置情報が必要です」が一瞬出ない。
+  // サーバー描画・ハイドレーション時は null として扱う
+  const stored = useSyncExternalStore(noopSubscribe, readStoredCoords, () => null);
   return coords ?? stored;
 }

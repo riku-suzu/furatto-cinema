@@ -15,7 +15,7 @@ import { PlaceResult, cleanAddress, photoUrl } from "@/lib/places";
 import { calculateDistance } from "@/lib/geo";
 
 // 映画館は「eiga.comに載っていて上映作品がある館」だけを扱う。
-// eiga.comには座標がないので、場所・写真・評価はGoogle Placesから名前で引いて補う。
+// eiga.comには座標がないので、場所・写真はGoogle Placesから名前で引いて補う。
 
 /** eiga.comの映画館ページと対応付いた映画館 */
 export interface TrackedCinema extends Cinema {
@@ -60,7 +60,6 @@ function toTrackedCinema(theater: EigaTheater, place: PlaceResult): TrackedCinem
     address: cleanAddress(place.formatted_address || ""),
     lat: place.geometry.location.lat,
     lng: place.geometry.location.lng,
-    rating: place.rating,
     photoUrl: photoUrl(place),
     movieCount: theater.movieCount,
     eigaPath: theater.url,

@@ -5,7 +5,6 @@ export interface Cinema {
   lat: number;
   lng: number;
   distance?: number; // km
-  rating?: number;
   photoUrl?: string;
   movieCount?: number; // 上映中の作品数
   eigaUrl?: string;    // eiga.comの映画館ページ
@@ -24,6 +23,8 @@ export interface Screening {
   language?: string;
   format?: string; // "2D", "3D", "IMAX"
   ticketUrl?: string;
+  /** ticket: 座席選択・購入ページに直接飛べる / official: 映画館の公式サイトに飛ぶだけ（eiga.com非対応のチェーン） */
+  booking?: "ticket" | "official";
   isPast?: boolean; // 上映時間が過去かどうか
 }
 

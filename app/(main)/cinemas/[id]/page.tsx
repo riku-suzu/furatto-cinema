@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarX, ChevronRight, ExternalLink } from "lucide-react";
-import { fetchCinema, fetchSchedule } from "@/lib/api";
+import { fetchCinema, fetchSchedules } from "@/lib/api";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { addDays, dateParts, todayJst } from "@/lib/time";
 import { Cinema, Screening } from "@/types";
@@ -12,24 +11,30 @@ import BackLink from "@/components/BackLink";
 import CinemaHero from "@/components/CinemaHero";
 import EmptyState from "@/components/EmptyState";
 import ErrorBanner from "@/components/ErrorBanner";
+import SegmentedControl from "@/components/SegmentedControl";
 import ShowtimeChip from "@/components/ShowtimeChip";
+import { LanguageBadge, languageLabel } from "@/components/ScreeningBadges";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-/** 今日から1週間分の日付（JST） */
-function getWeekDates() {
+interface Schedules {
+  dates: string[];
+  schedules: Record<string, Screening[]>;
+}
+
+/** eiga.comの館ID（"13-130201-3263"）か。旧形式のGoogle place_idでなければtrue */
+const isTheaterId = (id: string) => /^\d{1,2}-\d+-\d+$/.test(id);
+
+/** "2026-09-29" → "今日 9/29" / "明日 9/30" / "木 10/1" */
+function dateLabel(date: string): string {
+  const { month, day, weekday } = dateParts(date);
   const today = todayJst();
-  return Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(today, i);
-    const parts = dateParts(date);
-    const label = i === 0 ? "今日" : i === 1 ? "明日" : parts.weekday;
-    return { date, label, ...parts };
-  });
+  const prefix = date === today ? "今日" : date === addDays(today, 1) ? "明日" : weekday;
+  return `${prefix} ${month}/${day}`;
 }
 
 /** まだ観られる回（終了・満席でない回）があるか */
@@ -52,12 +57,12 @@ export default function CinemaDetailPage({ params }: PageProps) {
   const router = useRouter();
   const { replaceFavorite } = useFavorites();
   const [cinema, setCinema] = useState<Cinema | null>(null);
-  const [screenings, setScreenings] = useState<Screening[]>([]);
-  const [selectedDate, setSelectedDate] = useState(todayJst);
   const [loading, setLoading] = useState(true);
-  const [scheduleLoading, setScheduleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 全日付分をまとめて1回だけ取得し、日付の切り替えは手元で行う
+  const [schedules, setSchedules] = useState<Schedules | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(todayJst);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,22 +83,22 @@ export default function CinemaDetailPage({ params }: PageProps) {
     return () => { cancelled = true; };
   }, [decodedId, replaceFavorite, router]);
 
+  // スケジュールは映画館情報と並行して取りに行く（旧形式のidは移行後のidで取る）
   useEffect(() => {
-    if (!cinema) return;
-    // 日付を素早く切り替えたとき、古いリクエストの結果で上書きしないようにする
+    if (!isTheaterId(decodedId)) return;
     let cancelled = false;
-    setScheduleLoading(true);
     setScheduleError(null);
-    fetchSchedule(cinema.id, selectedDate)
-      .then((result) => { if (!cancelled) setScreenings(result); })
-      .catch(() => {
-        if (cancelled) return;
-        setScheduleError("スケジュールの取得に失敗しました");
-        setScreenings([]);
-      })
-      .finally(() => { if (!cancelled) setScheduleLoading(false); });
+    fetchSchedules(decodedId)
+      .then((result) => { if (!cancelled) setSchedules(result); })
+      .catch(() => { if (!cancelled) setScheduleError("スケジュールの取得に失敗しました"); });
     return () => { cancelled = true; };
-  }, [cinema, selectedDate]);
+  }, [decodedId]);
+
+  const dates = schedules?.dates ?? [];
+  const activeDate = dates.includes(selectedDate) ? selectedDate : dates[0];
+  const screenings = (activeDate && schedules?.schedules[activeDate]) || [];
+  const scheduleLoading = !schedules && !scheduleError;
+  const nextDate = dates[dates.indexOf(activeDate) + 1];
 
   // 選んだ日に観られる回がない作品（主に今日の夜）は折りたたみに回す
   const groups = groupByMovie(screenings);
@@ -104,11 +109,7 @@ export default function CinemaDetailPage({ params }: PageProps) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-64 sm:h-80 rounded-2xl bg-card" />
-        <div className="flex gap-2">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-14 rounded-lg bg-card" />
-          ))}
-        </div>
+        <Skeleton className="h-10 w-72 rounded-full bg-card" />
       </div>
     );
   }
@@ -135,55 +136,33 @@ export default function CinemaDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-8">
-      {/* Breadcrumb */}
-      <nav className="text-xs flex items-center gap-1 text-muted-foreground">
-        <Link href="/" className="hover:text-foreground transition-colors">トップ</Link>
-        <ChevronRight className="size-3" />
-        <Link href="/cinemas" className="hover:text-foreground transition-colors">映画館一覧</Link>
-        <ChevronRight className="size-3" />
-        <span className="truncate max-w-[200px] text-foreground/70">{cinema.name}</span>
-      </nav>
+      <BackLink href="/cinemas" position="top">映画館一覧に戻る</BackLink>
 
-      <CinemaHero cinema={cinema} />
+      <div className="animate-rise motion-reduce:animate-none">
+        <CinemaHero cinema={cinema} />
+      </div>
 
       {/* ── Date picker ── */}
-      <ToggleGroup
-        type="single"
-        spacing={2}
-        value={selectedDate}
-        onValueChange={(v) => v && setSelectedDate(v)}
-        aria-label="日付"
-        className="w-full overflow-x-auto pb-1 scrollbar-hide"
-      >
-        {getWeekDates().map(({ date, label, month, day, dayOfWeek }) => (
-          <ToggleGroupItem
-            key={date}
-            value={date}
-            className="h-auto min-w-14 flex-col gap-0.5 border bg-card px-3 py-2 data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-          >
-            <span
-              className={`text-[11px] font-semibold ${
-                dayOfWeek === 0 ? "text-red-400" : dayOfWeek === 6 ? "text-sky-400" : "text-muted-foreground"
-              } group-data-[state=on]/toggle:text-primary-foreground/80`}
-            >
-              {label}
-            </span>
-            <span className="text-base font-black tabular-nums leading-none">
-              {day === 1 || date === selectedDate ? `${month}/${day}` : day}
-            </span>
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+      {dates.length > 0 && (
+        <div className="-mx-5 animate-rise overflow-x-auto px-5 pb-1 scrollbar-hide motion-reduce:animate-none" style={{ animationDelay: "120ms" }}>
+          <SegmentedControl
+            options={dates.map((d) => ({ value: d, label: dateLabel(d) }))}
+            value={activeDate}
+            onChange={setSelectedDate}
+            label="日付"
+          />
+        </div>
+      )}
 
       {/* ── Schedule loading ── */}
       {scheduleLoading && (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-card p-5 space-y-4">
-              <Skeleton className="h-4 w-1/3" />
-              <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-2">
+            <div key={i} className="rounded-2xl border bg-card p-5 space-y-4 sm:p-6">
+              <Skeleton className="h-5 w-1/3" />
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
                 {Array.from({ length: 4 }).map((_, j) => (
-                  <Skeleton key={j} className="h-[76px] rounded-lg" />
+                  <Skeleton key={j} className="h-[84px] rounded-xl" />
                 ))}
               </div>
             </div>
@@ -208,21 +187,33 @@ export default function CinemaDetailPage({ params }: PageProps) {
 
       {/* ── Screenings grouped by movie ── */}
       {!scheduleLoading && screenings.length > 0 && (
-        <div className="space-y-4">
+        <div key={activeDate} className="space-y-5">
           <p className="text-xs flex items-center gap-1.5 text-muted-foreground">
             <span className="inline-block size-1.5 rounded-full bg-success shadow-[0_0_6px_var(--success)]" />
             映画.comのリアルタイムデータ
           </p>
-          {available.map((group) => (
-            <MovieSchedule key={group[0].movieId} screenings={group} />
+          {available.length === 0 && nextDate && (
+            <div className="flex animate-rise flex-col items-center gap-3 rounded-2xl border bg-card px-6 py-10 text-center motion-reduce:animate-none">
+              <CalendarX className="size-6 text-muted-foreground" />
+              <p className="font-bold">この日の上映はすべて終了しました</p>
+              <Button onClick={() => setSelectedDate(nextDate)} className="h-10 rounded-full px-5 font-bold">
+                {dateLabel(nextDate)}のスケジュールを見る
+                <ChevronRight />
+              </Button>
+            </div>
+          )}
+          {available.map((group, i) => (
+            <div key={group[0].movieId} className="animate-rise motion-reduce:animate-none" style={{ animationDelay: `${Math.min(i, 8) * 70}ms` }}>
+              <MovieSchedule screenings={group} />
+            </div>
           ))}
           {finished.length > 0 && (
-            <details className="group/finished rounded-xl border border-dashed">
+            <details className="group/finished animate-rise rounded-xl border border-dashed motion-reduce:animate-none">
               <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground">
                 <ChevronRight className="size-4 transition-transform group-open/finished:rotate-90" />
-                本日の上映が終了した作品（{finished.length}）
+                上映が終了した作品（{finished.length}）
               </summary>
-              <div className="space-y-4 p-4 pt-0">
+              <div className="space-y-5 p-4 pt-0">
                 {finished.map((group) => (
                   <MovieSchedule key={group[0].movieId} screenings={group} />
                 ))}
@@ -238,16 +229,37 @@ export default function CinemaDetailPage({ params }: PageProps) {
 }
 
 function MovieSchedule({ screenings }: { screenings: Screening[] }) {
+  // 字幕・吹替が両方ある作品は行を分け、片方だけならタイトルの横にバッジで出す
+  const byLanguage = new Map<string, Screening[]>();
+  for (const s of screenings) {
+    const key = s.language ?? "";
+    byLanguage.set(key, [...(byLanguage.get(key) ?? []), s]);
+  }
+  const languages = [...byLanguage.keys()];
+  const split = languages.length > 1;
+
   return (
-    <section className="rounded-xl border bg-card p-4 sm:p-5">
-      <div className="mb-3 flex items-center gap-3">
-        <div className="h-4 w-1 flex-shrink-0 rounded-full bg-primary" />
-        <h2 className="font-bold text-sm truncate">{screenings[0].movieTitle}</h2>
-        <span className="ml-auto flex-shrink-0 text-xs text-muted-foreground">{screenings.length}回</span>
+    <section className="rounded-2xl border bg-card p-5 sm:p-6">
+      <div className="mb-4 flex items-start gap-3">
+        <div className="mt-1 h-5 w-1 flex-shrink-0 rounded-full bg-primary" />
+        <h2 className="text-base font-bold leading-snug">
+          {screenings[0].movieTitle}
+          {!split && languages[0] && <LanguageBadge language={languages[0]} className="ml-2 align-[2px]" />}
+        </h2>
+        <span className="ml-auto flex-shrink-0 pt-0.5 text-xs text-muted-foreground">{screenings.length}回</span>
       </div>
-      <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-2">
-        {screenings.map((s) => (
-          <ShowtimeChip key={s.id} screening={s} />
+      <div className="space-y-4">
+        {[...byLanguage].map(([language, list]) => (
+          <div key={language}>
+            {split && (
+              <p className="mb-2 text-xs font-bold text-lang">{language ? languageLabel(language) : "その他"}</p>
+            )}
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+              {list.map((s) => (
+                <ShowtimeChip key={s.id} screening={s} />
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </section>

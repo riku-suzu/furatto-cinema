@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Clapperboard, Film, MapPin, Star } from "lucide-react";
+import { ChevronRight, Clapperboard, MapPin } from "lucide-react";
 import { Cinema } from "@/types";
 import { formatDistance } from "@/lib/geo";
 import FavoriteButton from "./FavoriteButton";
@@ -9,49 +9,46 @@ export default function CinemaCard({ cinema }: { cinema: Cinema }) {
   return (
     <Link
       href={`/cinemas/${cinema.id}`}
-      className="group block overflow-hidden rounded-xl border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_8px_30px_rgba(229,55,58,0.12)]"
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_16px_40px_rgba(229,55,58,0.14)]"
     >
-      {/* Image */}
-      <div className="relative h-32 sm:h-36 bg-muted">
+      <div className="relative aspect-[16/9] overflow-hidden bg-muted">
         {cinema.photoUrl ? (
-          <Image src={cinema.photoUrl} alt={cinema.name} fill className="object-cover opacity-80 transition-all duration-300 group-hover:scale-[1.03] group-hover:opacity-100" unoptimized />
+          <Image
+            src={cinema.photoUrl}
+            alt={cinema.name}
+            fill
+            className="object-cover opacity-85 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100"
+            unoptimized
+          />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/50">
-            <Clapperboard className="size-10" />
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/40">
+            <Clapperboard className="size-12" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-card/70 to-transparent to-60%" />
-
-        <div className="absolute top-2 left-2 right-2 flex items-start justify-between">
-          {cinema.distance !== undefined && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-xs font-semibold text-white backdrop-blur-sm">
-              <MapPin className="size-3 text-primary" />
-              {formatDistance(cinema.distance)}
-            </span>
-          )}
-          <FavoriteButton cinema={cinema} className="ml-auto" />
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-card/50 to-transparent to-50%" />
+        <FavoriteButton cinema={cinema} className="absolute top-3 right-3" />
       </div>
 
-      <div className="px-3 py-2.5">
-        <h3 className="font-bold text-sm leading-snug line-clamp-2 transition-colors group-hover:text-primary">
+      <div className="flex flex-1 flex-col gap-2 p-5">
+        <h3 className="text-base font-bold leading-snug line-clamp-2 transition-colors group-hover:text-primary">
           {cinema.name}
         </h3>
-        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-          {cinema.rating !== undefined && (
-            <span className="inline-flex flex-shrink-0 items-center gap-0.5 font-semibold text-gold">
-              <Star className="size-3 fill-current" />
-              {cinema.rating.toFixed(1)}
+        <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">{cinema.address}</p>
+
+        <div className="mt-auto flex items-center justify-between pt-3 text-sm">
+          {cinema.distance !== undefined ? (
+            <span className="inline-flex items-center gap-1.5 font-semibold">
+              <MapPin className="size-4 text-primary" />
+              {formatDistance(cinema.distance)}
             </span>
+          ) : (
+            <span />
           )}
-          <span className="line-clamp-1">{cinema.address}</span>
+          <span className="inline-flex items-center gap-0.5 text-muted-foreground transition-colors group-hover:text-primary">
+            上映スケジュール
+            <ChevronRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </span>
         </div>
-        {cinema.movieCount !== undefined && cinema.movieCount > 0 && (
-          <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-success">
-            <Film className="size-3" />
-            {cinema.movieCount}作品上映中
-          </p>
-        )}
       </div>
     </Link>
   );
