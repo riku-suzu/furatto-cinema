@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 
 export const metadata: Metadata = {
   title: "映画時間 - 周辺映画館の上映スケジュール",
@@ -15,9 +16,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ja">
-      <body className={`${geist.className} min-h-screen`} style={{ background: "#0d0d12", color: "#f2f2f5" }}>
+    <html lang="ja" className={`dark ${geist.variable}`}>
+      <body className="min-h-screen">
         {children}
+        <Toaster position="bottom-center" />
       </body>
     </html>
   );

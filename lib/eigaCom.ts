@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { Screening } from "@/types";
+import { addMinutes, compareTime, isPastJst } from "@/lib/time";
 
 // eiga.com prefecture codes (= JIS prefecture codes)
 const PREF_CODE_MAP: Record<string, string> = {
@@ -27,6 +28,11 @@ async function fetchHtml(url: string): Promise<string> {
   return res.text();
 }
 
+/** 都道府県コード → 都道府県名 */
+export const PREF_NAMES: Record<string, string> = Object.fromEntries(
+  Object.entries(PREF_CODE_MAP).map(([name, code]) => [code, name])
+);
+
 /** 住所文字列から都道府県コードを抽出 */
 export function getPrefCodeFromAddress(address: string): string | null {
   for (const [pref, code] of Object.entries(PREF_CODE_MAP)) {
@@ -51,15 +57,13 @@ const PREF_CENTROIDS: [string, number, number][] = [
   ["45",31.91,131.42],["46",31.56,130.56],["47",26.21,127.68],
 ];
 
-/** 緯度経度から最近傍の都道府県コードを返す（vicinityに都道府県名がない場合のフォールバック） */
-export function getPrefCodeFromCoords(lat: number, lng: number): string {
-  let best = PREF_CENTROIDS[0];
-  let minDist = Infinity;
-  for (const entry of PREF_CENTROIDS) {
-    const d = Math.hypot(lat - entry[1], lng - entry[2]);
-    if (d < minDist) { minDist = d; best = entry; }
-  }
-  return best[0];
+/** 緯度経度から近い順にn件の都道府県コードを返す（住所に都道府県名がない場合のフォールバック） */
+export function getNearbyPrefCodes(lat: number, lng: number, n: number): string[] {
+  return PREF_CENTROIDS
+    .map(([code, cLat, cLng]) => ({ code, d: Math.hypot(lat - cLat, lng - cLng) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, n)
+    .map((e) => e.code);
 }
 
 // 英語チェーン名 → eiga.com表記への正規化マップ
@@ -73,77 +77,115 @@ const CHAIN_ALIASES: [RegExp, string][] = [
   [/\bkino\s*cinema\b/i, "キノシネマ"],
 ];
 
-function normalizeChainName(name: string): string {
-  let result = name;
-  for (const [pattern, ja] of CHAIN_ALIASES) {
-    result = result.replace(pattern, ja);
-  }
-  return result;
+// 「シネマ」「シアター」などはほぼ全館に含まれるので、比較前に取り除いて
+// 館名の固有部分（地名・ブランド名）だけで比べる。残すと "Cinema 77" と
+// "CINEMA NEKO" のような無関係な館同士が高スコアになってしまう。
+const GENERIC_WORDS = /シネマズ|シネマ|シアター|cinemas?|theat(?:er|re)s?|映画館|劇場|スクリーン/gi;
+
+/** 比較用に名前を正規化: 全角→半角、アクセント除去、英語チェーン名→日本語、汎用語・記号除去 */
+function normalizeName(name: string, keepGeneric = false): string {
+  let s = name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "") // "cinéma" → "cinema"
+    .normalize("NFKC");                // "１０９" → "109"
+  for (const [pattern, ja] of CHAIN_ALIASES) s = s.replace(pattern, ja);
+  if (!keepGeneric) s = s.replace(GENERIC_WORDS, "");
+  return s.replace(/[\s・()「」【】\-－'’&]/g, "").toLowerCase();
 }
 
-/** 文字列の類似度スコア（簡易Jaccard） */
+/**
+ * 映画館名の類似度（0〜1強）。汎用語を除いた固有部分で比べ、完全一致1、包含0.9、
+ * それ以外はbigramのDice係数。同点を崩すため、汎用語込みの一致度を小さく加点する
+ * （商業施設「なんばパークス」より「なんばパークスシネマ」を優先させる）。
+ */
 export function similarity(a: string, b: string): number {
-  // 英語チェーン名を日本語に正規化してから比較
-  const na_raw = normalizeChainName(a);
-  const nb_raw = normalizeChainName(b);
-  // 記号・スペース正規化
-  const normalize = (s: string) =>
-    s.replace(/[\s　・（）()「」【】\-－]/g, "").toLowerCase();
-  const na = normalize(na_raw);
-  const nb = normalize(nb_raw);
+  const core = diceSimilarity(normalizeName(a), normalizeName(b));
+  if (core === 0) return 0;
+  return core + 0.01 * diceSimilarity(normalizeName(a, true), normalizeName(b, true));
+}
+
+function diceSimilarity(na: string, nb: string): number {
+  if (!na || !nb) return 0;
   if (na === nb) return 1;
   if (na.includes(nb) || nb.includes(na)) return 0.9;
-  // bigram
   const bigrams = (s: string) => new Set(Array.from({ length: s.length - 1 }, (_, i) => s.slice(i, i + 2)));
   const sa = bigrams(na);
   const sb = bigrams(nb);
+  if (sa.size === 0 || sb.size === 0) return 0;
   const intersection = [...sa].filter((x) => sb.has(x)).length;
   return (2 * intersection) / (sa.size + sb.size);
 }
 
 export interface EigaTheater {
+  id: string;         // e.g. "13-130301-3035"（URLの3セグメントを繋いだもの）
   name: string;
-  url: string;  // e.g. "/theater/13/130301/3035/"
+  url: string;        // e.g. "/theater/13/130301/3035/"
+  prefCode: string;   // "13"
+  movieCount: number; // 上映中の作品数（一覧の「（16）」）
 }
 
-/** 都道府県コードから映画館リストを取得 */
+const THEATER_PATH = /^\/theater\/(\d+)\/(\d+)\/(\d+)\/$/;
+const THEATER_ID = /^(\d{1,2})-(\d+)-(\d+)$/;
+
+/** "13-130301-3035" → "/theater/13/130301/3035/"（形式が不正ならnull） */
+export function theaterPathFromId(id: string): string | null {
+  const m = id.match(THEATER_ID);
+  return m ? `/theater/${Number(m[1])}/${m[2]}/${m[3]}/` : null;
+}
+
+/** これ未満の類似度は別の映画館とみなす */
+const MATCH_THRESHOLD = 0.4;
+
+/** 都道府県内の映画館一覧（上映作品数つき） */
 export async function getTheatersByPref(prefCode: string): Promise<EigaTheater[]> {
-  const html = await fetchHtml(`${EIGA_BASE}/theater/${prefCode}/`);
+  // eiga.comのURLはゼロ埋めしない（北海道は /theater/01/ ではなく /theater/1/）
+  const urlCode = String(Number(prefCode));
+  const html = await fetchHtml(`${EIGA_BASE}/theater/${urlCode}/`);
   const $ = cheerio.load(html);
-  const theaters: EigaTheater[] = [];
+  const theaters = new Map<string, EigaTheater>();
 
-  $(`a[href^="/theater/${prefCode}/"]`).each((_, el) => {
+  // <li><a href="/theater/13/130301/3035/">TOHOシネマズ 渋谷</a> （16）</li>
+  $(`a[href^="/theater/${urlCode}/"]`).each((_, el) => {
     const href = $(el).attr("href") || "";
-    // Only individual theater URLs (4 segments): /theater/13/130301/3035/
-    if (/^\/theater\/\d+\/\d+\/\d+\/$/.test(href)) {
-      const name = $(el).text().trim();
-      if (name) theaters.push({ name, url: href });
-    }
+    const m = href.match(THEATER_PATH);
+    if (!m || theaters.has(href)) return;
+    const name = $(el).text().trim();
+    if (!name) return;
+    const count = $(el).parent().text().normalize("NFKC").match(/\((\d+)\)\s*$/);
+    theaters.set(href, {
+      id: `${m[1]}-${m[2]}-${m[3]}`,
+      name,
+      url: href,
+      prefCode: prefCode.padStart(2, "0"),
+      movieCount: count ? Number(count[1]) : 0,
+    });
   });
 
-  // Deduplicate
-  const seen = new Set<string>();
-  return theaters.filter((t) => {
-    if (seen.has(t.url)) return false;
-    seen.add(t.url);
-    return true;
-  });
+  return [...theaters.values()];
 }
 
-/** 映画館名でファジーマッチしてeiga.comのURLを返す */
-export async function findTheaterUrl(
-  cinemaName: string,
-  prefCode: string
-): Promise<string | null> {
+/** idから映画館を引く */
+export async function getTheaterById(id: string): Promise<EigaTheater | null> {
+  const path = theaterPathFromId(id);
+  if (!path) return null;
+  const prefCode = id.split("-")[0].padStart(2, "0");
   const theaters = await getTheatersByPref(prefCode);
-  if (theaters.length === 0) return null;
+  return theaters.find((t) => t.url === path) ?? null;
+}
 
-  const scored = theaters
-    .map((t) => ({ ...t, score: similarity(cinemaName, t.name) }))
-    .sort((a, b) => b.score - a.score);
-
-  // 閾値0.4以上のみ
-  return scored[0]?.score >= 0.4 ? scored[0].url : null;
+/** 名前が最も近いeiga.comの映画館を返す（閾値未満ならnull） */
+export async function findTheaterByName(cinemaName: string, prefCode: string): Promise<EigaTheater | null> {
+  const theaters = await getTheatersByPref(prefCode);
+  let best: EigaTheater | null = null;
+  let bestScore = -1;
+  for (const t of theaters) {
+    const score = similarity(cinemaName, t.name);
+    if (score > bestScore) {
+      best = t;
+      bestScore = score;
+    }
+  }
+  return bestScore >= MATCH_THRESHOLD ? best : null;
 }
 
 /** "3月20日公開" → "2026-03-20" に変換。失敗時は最古（ソート末尾）*/
@@ -160,26 +202,6 @@ function parseReleaseDate(text: string): string {
 function parseRuntime(text: string): number {
   const m = text.match(/(\d+)分/);
   return m ? Number(m[1]) : 0;
-}
-
-/** "HH:MM" + 分数 → 終了時刻 "HH:MM" */
-function calcEndTime(startTime: string, runtimeMin: number): string {
-  if (!runtimeMin) return "";
-  const [h, m] = startTime.split(":").map(Number);
-  const total = h * 60 + m + runtimeMin;
-  return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
-
-/** "HH:MM" と対象日から、その上映が過去かどうか判定（JST基準） */
-function isScreeningPast(targetDate: string, startTime: string): boolean {
-  const [h, m] = startTime.split(":").map(Number);
-  // JST = UTC+9
-  const nowJst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const todayJst = nowJst.toISOString().slice(0, 10);
-  if (targetDate !== todayJst) return false;
-  const nowH = nowJst.getUTCHours();
-  const nowM = nowJst.getUTCMinutes();
-  return h < nowH || (h === nowH && m <= nowM);
 }
 
 /** eiga.comの映画館ページから指定日のスケジュールをパース */
@@ -199,16 +221,14 @@ export async function scrapeSchedule(
     const movieTitle = $(section).attr("data-title") || $(section).find("h2 a").first().text().trim();
     if (!movieId || !movieTitle) return;
 
-    const posterMatch = $(section).find("img").first().attr("src") || "";
-    const posterPathMatch = posterMatch.match(/\/images\/movie\/\d+\/photo\/[^/]+\/\d+\.jpg/);
-    const posterPath = posterPathMatch ? posterPathMatch[0] : undefined;
+    const posterSrc = $(section).find("img").first().attr("src") || "";
+    const posterPath = posterSrc.match(/\/images\/movie\/\d+\/photo\/[^/]+\/\d+\.jpg/)?.[0];
 
     // 公開日・上映時間を取得 (<p class="data"><span>3月20日公開</span><span>156分</span>...)
     const dataSpans = $(section).find("p.data span");
     const releaseText = dataSpans.first().text() || $(section).find(".data").first().text();
     const releaseDate = parseReleaseDate(releaseText);
-    const runtimeText = dataSpans.eq(1).text() || "";
-    const runtime = parseRuntime(runtimeText);
+    const runtime = parseRuntime(dataSpans.eq(1).text() || "");
 
     const movieScreenings: Screening[] = [];
 
@@ -223,70 +243,41 @@ export async function scrapeSchedule(
       const td = $(schedBlock).find(`td[data-date="${dateKey}"]`);
       if (!td.length) return;
 
-      td.find("a.btn[class*='ticket']").each((_, slot) => {
+      // 各スロットは "8:25<small>～10:20</small>" の形（終了時刻はない場合もある）
+      const addScreening = (slot: Parameters<typeof $>[0], idSuffix: string, fields: Partial<Screening>) => {
         const el = $(slot);
         const startTime = el.clone().children("small").remove().end().text().trim();
-        const endRaw = el.find("small").text().replace("～", "").trim();
-        const ticketUrl = el.attr("href");
         if (!startTime) return;
-
+        const endRaw = el.find("small").text().replace("～", "").trim();
         movieScreenings.push({
-          id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}`,
+          id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}${idSuffix}`,
           movieId: Number(movieId),
           movieTitle,
           posterPath,
           startTime,
-          endTime: endRaw || calcEndTime(startTime, runtime),
+          endTime: endRaw || addMinutes(startTime, runtime),
           screen: "",
           language,
           format: "2D",
-          ticketUrl,
-        } as Screening & { ticketUrl?: string });
+          isPast: isPastJst(targetDate, startTime),
+          ...fields,
+        });
+      };
+
+      // 購入可能な上映（eiga.com経由のチケット販売）
+      td.find("a.btn[class*='ticket']").each((_, slot) => {
+        addScreening(slot, "", { ticketUrl: $(slot).attr("href") });
       });
 
+      // 販売終了（満席 or 上映開始済み）
       td.find("span.btn.off").each((_, slot) => {
-        const startTime = $(slot).text().trim();
-        if (!startTime) return;
-        const past = isScreeningPast(targetDate, startTime);
-
-        movieScreenings.push({
-          id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}-off`,
-          movieId: Number(movieId),
-          movieTitle,
-          posterPath,
-          startTime,
-          endTime: calcEndTime(startTime, runtime),
-          screen: "",
-          language,
-          format: "2D",
-          availableSeats: 0,
-          totalSeats: 1,
-          isPast: past,
-        });
+        addScreening(slot, "-off", { availableSeats: 0, totalSeats: 1 });
       });
 
       // Some chains (e.g. AEON Cinema) don't sell through eiga.com at all —
       // they just link out to the theater's own official booking site.
       td.find("a.official").each((_, slot) => {
-        const el = $(slot);
-        const startTime = el.text().trim();
-        const ticketUrl = el.attr("href");
-        if (!startTime) return;
-        const past = isScreeningPast(targetDate, startTime);
-
-        movieScreenings.push({
-          id: `eiga-${movieId}-${dateKey}-${startTime.replace(":", "")}-official`,
-          movieId: Number(movieId),
-          movieTitle,
-          posterPath,
-          startTime,
-          endTime: calcEndTime(startTime, runtime),
-          screen: "",
-          language,
-          format: "2D",
-          ticketUrl,
-          isPast: past,
-        });
+        addScreening(slot, "-official", { ticketUrl: $(slot).attr("href") });
       });
     });
 
@@ -298,6 +289,6 @@ export async function scrapeSchedule(
   // 公開日の新しい順（降順）にソートしてフラット化、各映画内は上映時間順
   movieGroups.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
   return movieGroups.flatMap((g) =>
-    g.screenings.sort((a, b) => a.startTime.padStart(5, "0").localeCompare(b.startTime.padStart(5, "0")))
+    g.screenings.sort((a, b) => compareTime(a.startTime, b.startTime))
   );
 }

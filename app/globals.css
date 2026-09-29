@@ -1,21 +1,84 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+@custom-variant dark (&:is(.dark *));
+
+/* ダーク固定のシネマテーマ。shadcn/uiのトークン名に合わせてある
+   (bg-card, text-muted-foreground, bg-primary, border-border, ...) */
 :root {
-  --bg:         #0d0d12;
-  --bg-card:    #16161e;
-  --bg-card2:   #1e1e28;
-  --border:     rgba(255,255,255,0.08);
-  --red:        #e5373a;
-  --red-dark:   #b91c1e;
-  --text:       #f2f2f5;
-  --text-sub:   #c8c8d8;
-  --text-muted: #808090;
-  --gold:       #fbbf24;
+  --background:           #0d0d12;
+  --foreground:           #f2f2f5;
+  --card:                 #16161e;
+  --card-foreground:      #f2f2f5;
+  --popover:              #1a1a24;
+  --popover-foreground:   #f2f2f5;
+  --primary:              #e5373a;
+  --primary-foreground:   #ffffff;
+  --secondary:            rgba(255,255,255,0.06);
+  --secondary-foreground: #f2f2f5;
+  --muted:                #1e1e28;
+  --muted-foreground:     #808090;
+  --accent:               #1e1e28;
+  --accent-foreground:    #f2f2f5;
+  --destructive:          #f87171;
+  --border:               rgba(255,255,255,0.08);
+  --input:                rgba(255,255,255,0.12);
+  --ring:                 #e5373a;
+  --radius:               0.5rem;
+
+  /* アプリ固有 */
+  --gold:                 #fbbf24;
+  --lang:                 #93c5fd;
+  --success:              #4ade80;
 }
 
-body {
-  background: var(--bg);
-  color: var(--text);
+@theme inline {
+  --font-sans:                 var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading:              var(--font-sans);
+  --color-background:          var(--background);
+  --color-foreground:          var(--foreground);
+  --color-card:                var(--card);
+  --color-card-foreground:     var(--card-foreground);
+  --color-popover:             var(--popover);
+  --color-popover-foreground:  var(--popover-foreground);
+  --color-primary:             var(--primary);
+  --color-primary-foreground:  var(--primary-foreground);
+  --color-secondary:           var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:               var(--muted);
+  --color-muted-foreground:    var(--muted-foreground);
+  --color-accent:              var(--accent);
+  --color-accent-foreground:   var(--accent-foreground);
+  --color-destructive:         var(--destructive);
+  --color-border:              var(--border);
+  --color-input:               var(--input);
+  --color-ring:                var(--ring);
+  --color-gold:                var(--gold);
+  --color-lang:                var(--lang);
+  --color-success:             var(--success);
+  --radius-sm:                 calc(var(--radius) * 0.6);
+  --radius-md:                 calc(var(--radius) * 0.8);
+  --radius-lg:                 var(--radius);
+  --radius-xl:                 calc(var(--radius) * 1.5);
+  --radius-2xl:                calc(var(--radius) * 2);
+  --radius-3xl:                calc(var(--radius) * 3);
+  --radius-4xl:                calc(var(--radius) * 4);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 .scrollbar-hide {
@@ -23,13 +86,3 @@ body {
   scrollbar-width: none;
 }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
-
-/* Film grain overlay for cinematic feel */
-.film-grain::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-  pointer-events: none;
-  opacity: 0.04;
-}

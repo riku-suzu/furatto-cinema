@@ -1,24 +1,28 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLocation } from "@/contexts/LocationContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import FavoriteButton from "@/components/FavoriteButton";
 import CurtainTransition, { CurtainHandle } from "@/components/CurtainTransition";
-import { searchNearbyCinemas } from "@/lib/googlePlaces";
+import ErrorBanner from "@/components/ErrorBanner";
+import { buttonVariants } from "@/components/ui/button";
+import { fetchNearbyCinemas } from "@/lib/api";
+import { NOW_RADIUS_METERS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { CalendarClock, ChevronRight, Loader2, MapPin, Star, Ticket } from "lucide-react";
 
 type Destination = "now" | "cinemas";
 
-// "今すぐ観れる映画" only searches this radius — a cinema further than this
-// isn't reachable "right now", so there's no point listing it.
-const NOW_RADIUS_METERS = 5000;
+const FEATURES = [
+  { icon: MapPin, title: "現在地から検索", desc: "GPSで半径15km圏内の映画館を自動検索" },
+  { icon: CalendarClock, title: "上映スケジュール", desc: "映画.comのリアルタイムデータで作品・時間を確認" },
+  { icon: Star, title: "お気に入り保存", desc: "よく行く映画館をすぐアクセス" },
+];
 
 export default function TopPage() {
   const { coords, loading, error, requestLocation } = useLocation();
-  const { favorites } = useFavorites();
   const curtainNowRef = useRef<CurtainHandle>(null);
   const curtainCinemasRef = useRef<CurtainHandle>(null);
   // ref (not state) so updating it doesn't retrigger this effect and race-cancel its own timeout
@@ -27,17 +31,13 @@ export default function TopPage() {
   // null = unknown/checking, otherwise the count of cinemas found within NOW_RADIUS_METERS
   const [nearbyCount, setNearbyCount] = useState<number | null>(null);
 
-  // Whenever we get coords, cache them and check whether any cinema is within
+  // Whenever we get coords, check whether any (eiga.com-listed) cinema is within
   // the "now" radius at all, so the button can be disabled when there's none.
   useEffect(() => {
-    if (!coords) {
-      setNearbyCount(null);
-      return;
-    }
-    sessionStorage.setItem("userCoords", JSON.stringify(coords));
-    let cancelled = false;
     setNearbyCount(null);
-    searchNearbyCinemas(coords, NOW_RADIUS_METERS)
+    if (!coords) return;
+    let cancelled = false;
+    fetchNearbyCinemas(coords, NOW_RADIUS_METERS)
       .then((cinemas) => { if (!cancelled) setNearbyCount(cinemas.length); })
       .catch(() => { if (!cancelled) setNearbyCount(0); });
     return () => { cancelled = true; };
@@ -92,141 +92,140 @@ export default function TopPage() {
       <section className="relative min-h-[75vh] flex flex-col items-center justify-center text-center overflow-hidden -mx-5 -mt-8 px-5">
 
         {/* Cinematic background */}
-        <div className="absolute inset-0" style={{ background: "#0d0d12" }} />
+        <div className="absolute inset-0 bg-background" />
         <div className="absolute inset-0" style={{
-          background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(229,55,58,0.12) 0%, transparent 70%)"
+          background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(229,55,58,0.14) 0%, transparent 70%)"
         }} />
         {/* Subtle grid lines */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
-          backgroundSize: "60px 60px"
+          backgroundSize: "60px 60px",
+          maskImage: "radial-gradient(ellipse 70% 60% at 50% 45%, black 30%, transparent 80%)",
         }} />
 
         {/* Content */}
         <div className="relative z-10 max-w-2xl mx-auto space-y-8">
-          <div className="space-y-4">
-            <p className="text-xs font-bold tracking-[0.3em] uppercase" style={{ color: "#e5373a" }}>
+          <div className="space-y-5">
+            <p className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-bold tracking-[0.2em] uppercase text-primary">
+              <span className="size-1.5 rounded-full bg-primary animate-pulse" />
               Now Playing Near You
             </p>
-            <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.05]" style={{ color: "#f2f2f5" }}>
+            <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.05]">
               今すぐ見れる映画を<br />
-              <span style={{
-                background: "linear-gradient(135deg, #e5373a 0%, #ff6b6b 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text"
+              <span className="bg-clip-text text-transparent" style={{
+                backgroundImage: "linear-gradient(135deg, #e5373a 0%, #ff6b6b 100%)",
               }}>探そう</span>
             </h1>
-            <p className="text-base sm:text-lg" style={{ color: "#808090" }}>
+            <p className="text-base sm:text-lg text-muted-foreground">
               現在地から半径15km圏内の映画館と<br className="hidden sm:block" />上映スケジュールをリアルタイム表示
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-3">
             <CurtainTransition
               ref={curtainNowRef}
               href="/now"
               onClick={() => choose("now")}
-              className="inline-flex items-center gap-3 font-bold px-10 py-4 rounded-full text-lg text-white transition-all"
-              style={{
-                background: "#e5373a",
-                boxShadow: "0 0 40px rgba(229,55,58,0.35)",
-                opacity: nowDisabled ? 0.4 : 1,
-                cursor: nowDisabled ? "not-allowed" : "pointer",
-              }}
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "h-14 gap-2.5 rounded-full px-9 text-lg font-bold shadow-[0_0_40px_rgba(229,55,58,0.35)] hover:bg-primary hover:shadow-[0_0_56px_rgba(229,55,58,0.5)] [&_svg:not([class*='size-'])]:size-5",
+                nowDisabled && "opacity-40 cursor-not-allowed hover:shadow-[0_0_40px_rgba(229,55,58,0.35)]"
+              )}
             >
               {pendingLabel === "now" ? (
                 <>
-                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  <Loader2 className="animate-spin" />
                   {loading ? "位置情報を取得中..." : "近くの映画館を確認中..."}
                 </>
               ) : (
-                "今すぐ観れる映画を見る →"
+                <>
+                  <Ticket />
+                  今すぐ観れる映画を見る
+                  <ChevronRight />
+                </>
               )}
             </CurtainTransition>
             {nowDisabled && (
-              <p className="text-sm px-4 py-2.5 rounded-xl text-center" style={{ color: "#fca5a5", background: "rgba(229,55,58,0.1)", border: "1px solid rgba(229,55,58,0.2)" }}>
+              <ErrorBanner className="w-auto">
                 現在地から{NOW_RADIUS_METERS / 1000}km圏内に映画館が見つかりませんでした
-              </p>
+              </ErrorBanner>
             )}
             <CurtainTransition
               ref={curtainCinemasRef}
               href="/cinemas"
               onClick={() => choose("cinemas")}
-              className="inline-flex items-center gap-3 font-bold px-10 py-4 rounded-full text-lg transition-all"
-              style={{ background: "rgba(255,255,255,0.06)", color: "#f2f2f5", border: "1px solid rgba(255,255,255,0.12)" }}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "h-14 gap-2.5 rounded-full px-9 text-lg font-bold [&_svg:not([class*='size-'])]:size-5"
+              )}
             >
               {loading && pendingLabel === "cinemas" ? (
                 <>
-                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  <Loader2 className="animate-spin" />
                   位置情報を取得中...
                 </>
               ) : (
-                "周辺の映画館を見る →"
+                <>
+                  <MapPin />
+                  周辺の映画館を見る
+                </>
               )}
             </CurtainTransition>
-            {error && (
-              <p className="text-sm px-4 py-2.5 rounded-xl" style={{ color: "#fca5a5", background: "rgba(229,55,58,0.1)", border: "1px solid rgba(229,55,58,0.2)" }}>
-                {error}
-              </p>
-            )}
+            {error && <ErrorBanner className="w-auto">{error}</ErrorBanner>}
           </div>
         </div>
 
         {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none" style={{
-          background: "linear-gradient(to bottom, transparent, #0d0d12)"
-        }} />
+        <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none bg-gradient-to-b from-transparent to-background" />
       </section>
 
-      {/* ── Favorites ── */}
-      {favorites.length > 0 && (
-        <section className="mt-16 space-y-4">
-          <h2 className="text-xs font-bold tracking-[0.25em] uppercase flex items-center gap-2" style={{ color: "#808090" }}>
-            <span style={{ color: "#fbbf24" }}>★</span> お気に入り
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {favorites.map((cinema) => (
-              <Link key={cinema.id} href={`/cinemas/${cinema.id}`}
-                className="flex items-center justify-between p-4 rounded-xl transition-all group"
-                style={{ background: "#16161e", border: "1px solid rgba(255,255,255,0.06)" }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(229,55,58,0.4)")}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}>
-                <div className="min-w-0">
-                  <p className="font-semibold truncate transition-colors text-white group-hover:text-red-400">
-                    {cinema.name}
-                  </p>
-                  <p className="text-xs truncate mt-0.5" style={{ color: "#808090" }}>{cinema.address}</p>
-                </div>
-                <FavoriteButton cinema={cinema} className="ml-3 flex-shrink-0" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      <FavoritesSection />
 
       {/* ── Features ── */}
-      <section className="mt-20 pt-12 pb-8" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 text-center">
-          {[
-            { icon: "📍", title: "現在地から検索", desc: "GPSで半径15km圏内の映画館を自動検索" },
-            { icon: "🎞", title: "上映スケジュール", desc: "映画.comのリアルタイムデータで作品・時間を確認" },
-            { icon: "★", title: "お気に入り保存", desc: "よく行く映画館をすぐアクセス" },
-          ].map((f) => (
-            <div key={f.title} className="space-y-3">
-              <div className="text-3xl">{f.icon}</div>
-              <dt className="font-bold text-sm" style={{ color: "#f2f2f5" }}>{f.title}</dt>
-              <dd className="text-sm leading-relaxed" style={{ color: "#808090" }}>{f.desc}</dd>
+      <section className="mt-20 pt-12 pb-8 border-t">
+        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {FEATURES.map((f) => (
+            <div key={f.title} className="rounded-xl border bg-card/50 p-6">
+              <div className="mb-4 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <f.icon className="size-5" />
+              </div>
+              <dt className="font-bold text-sm">{f.title}</dt>
+              <dd className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.desc}</dd>
             </div>
           ))}
-        </div>
+        </dl>
       </section>
     </div>
+  );
+}
+
+function FavoritesSection() {
+  const { favorites } = useFavorites();
+  if (favorites.length === 0) return null;
+
+  return (
+    <section className="mt-16 space-y-4">
+      <h2 className="text-xs font-bold tracking-[0.25em] uppercase flex items-center gap-2 text-muted-foreground">
+        <Star className="size-3.5 fill-gold text-gold" /> お気に入り
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {favorites.map((cinema) => (
+          <Link
+            key={cinema.id}
+            href={`/cinemas/${cinema.id}`}
+            className="group flex items-center justify-between gap-3 rounded-xl border bg-card p-4 transition-all hover:border-primary/40"
+          >
+            <div className="min-w-0">
+              <p className="font-semibold truncate transition-colors group-hover:text-primary">{cinema.name}</p>
+              <p className="text-xs truncate mt-0.5 text-muted-foreground">{cinema.address}</p>
+            </div>
+            <div className="flex flex-shrink-0 items-center gap-1">
+              <FavoriteButton cinema={cinema} className="bg-transparent" />
+              <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }

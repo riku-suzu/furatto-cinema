@@ -7,13 +7,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "maps.googleapis.com",
       },
-      {
-        protocol: "https",
-        hostname: "image.tmdb.org",
-      },
     ],
-    // Use our proxy route for Google Places photos
-    domains: [],
   },
 };
 

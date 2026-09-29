@@ -7,16 +7,8 @@ export interface Cinema {
   distance?: number; // km
   rating?: number;
   photoUrl?: string;
-}
-
-export interface Movie {
-  id: number;
-  title: string;
-  posterPath?: string;
-  overview?: string;
-  releaseDate?: string;
-  runtime?: number;
-  genres?: string[];
+  movieCount?: number; // 上映中の作品数
+  eigaUrl?: string;    // eiga.comの映画館ページ
 }
 
 export interface Screening {
@@ -33,12 +25,6 @@ export interface Screening {
   format?: string; // "2D", "3D", "IMAX"
   ticketUrl?: string;
   isPast?: boolean; // 上映時間が過去かどうか
-}
-
-export interface CinemaSchedule {
-  cinema: Cinema;
-  date: string; // "YYYY-MM-DD"
-  screenings: Screening[];
 }
 
 export interface Coordinates {

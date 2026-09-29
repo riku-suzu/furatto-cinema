@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
 } from "react";
 import { Cinema } from "@/types";
@@ -14,6 +15,8 @@ interface FavoritesContextType {
   favorites: Cinema[];
   isFavorite: (cinemaId: string) => boolean;
   toggleFavorite: (cinema: Cinema) => void;
+  /** 旧形式のidで保存されたお気に入りを新しいidの映画館に置き換える */
+  replaceFavorite: (oldId: string, cinema: Cinema) => void;
 }
 
 const FavoritesContext = createContext<FavoritesContextType | null>(null);
@@ -50,11 +53,20 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  return (
-    <FavoritesContext.Provider value={{ favorites, isFavorite, toggleFavorite }}>
-      {children}
-    </FavoritesContext.Provider>
+  const replaceFavorite = useCallback((oldId: string, cinema: Cinema) => {
+    setFavorites((prev) =>
+      prev.some((c) => c.id === oldId)
+        ? prev.filter((c) => c.id !== cinema.id).map((c) => (c.id === oldId ? cinema : c))
+        : prev
+    );
+  }, []);
+
+  const value = useMemo(
+    () => ({ favorites, isFavorite, toggleFavorite, replaceFavorite }),
+    [favorites, isFavorite, toggleFavorite, replaceFavorite]
   );
+
+  return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;
 }
 
 export function useFavorites() {

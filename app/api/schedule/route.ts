@@ -1,42 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPrefCodeFromAddress, findTheaterUrl, scrapeSchedule } from "@/lib/eigaCom";
+import { scrapeSchedule, theaterPathFromId } from "@/lib/eigaCom";
+import { todayJst } from "@/lib/time";
 
 export const preferredRegion = "hnd1"; // Tokyo — eiga.com requires JP IP
 
+// GET /api/schedule?id=13-130201-3263&date=YYYY-MM-DD
+// 1館分の指定日のスケジュール
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-  const cinemaName = searchParams.get("name") || "";
-  const address = searchParams.get("address") || "";
-  const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const path = theaterPathFromId(searchParams.get("id") || "");
+  const date = searchParams.get("date") || todayJst();
 
-  if (!cinemaName) {
-    return NextResponse.json({ error: "name is required" }, { status: 400 });
+  if (!path) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
-
-  const prefCode = getPrefCodeFromAddress(address);
-  if (!prefCode) {
-    return NextResponse.json(
-      { error: "都道府県を特定できませんでした", screenings: [] },
-      { status: 200 }
-    );
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json({ error: "invalid date" }, { status: 400 });
   }
 
   try {
-    const theaterUrl = await findTheaterUrl(cinemaName, prefCode);
-    if (!theaterUrl) {
-      return NextResponse.json(
-        { error: "映画.comで映画館が見つかりませんでした", screenings: [], eigaUrl: null },
-        { status: 200 }
-      );
-    }
-
-    const screenings = await scrapeSchedule(theaterUrl, date);
-    return NextResponse.json({
-      screenings,
-      eigaUrl: `https://eiga.com${theaterUrl}`,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "スクレイピングに失敗しました";
-    return NextResponse.json({ error: message, screenings: [] }, { status: 200 });
+    return NextResponse.json({ screenings: await scrapeSchedule(path, date) });
+  } catch {
+    return NextResponse.json({ error: "スケジュールの取得に失敗しました" }, { status: 502 });
   }
 }

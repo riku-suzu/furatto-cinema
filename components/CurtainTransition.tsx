@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useImperativeHandle, forwardRef, useTransition } from "react";
+import { useEffect, useState, useRef, useImperativeHandle, useTransition, Ref } from "react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   style?: React.CSSProperties;
   /** 指定すると、クリック時にカーテン開始の代わりにこれを呼ぶ（trigger()で明示的に開始する運用向け） */
   onClick?: () => void;
+  ref?: Ref<CurtainHandle>;
 }
 
 export interface CurtainHandle {
@@ -51,13 +52,37 @@ function CurtainFolds({ side }: { side: "left" | "right" }) {
   );
 }
 
-const CurtainTransition = forwardRef<CurtainHandle, Props>(function CurtainTransition({
+function Curtain({ side, isOffScreen, hasTransition }: { side: "left" | "right"; isOffScreen: boolean; hasTransition: boolean }) {
+  const dir = side === "left" ? -1 : 1;
+  return (
+    <div
+      className="relative flex-1 h-full overflow-hidden"
+      style={{
+        background: `linear-gradient(to ${side === "left" ? "right" : "left"}, #4a0000 0%, #7a0000 30%, #b01a1a 70%, #e5373a 100%)`,
+        transform: isOffScreen ? `translateX(${dir * 100}%)` : "translateX(0)",
+        transition: hasTransition
+          ? `transform ${isOffScreen ? "1.4s" : "1.5s"} cubic-bezier(0.7,0,0.3,1)`
+          : "none",
+        boxShadow: isOffScreen ? "none" : `${-dir * 4}px 0 28px rgba(0,0,0,0.7)`,
+      }}
+    >
+      <CurtainFolds side={side} />
+      <div
+        className="absolute top-0 left-0 right-0 h-8"
+        style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent)" }}
+      />
+    </div>
+  );
+}
+
+export default function CurtainTransition({
   href,
   children,
   className,
   style,
   onClick,
-}, ref) {
+  ref,
+}: Props) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
   const [isPending, startTransition] = useTransition();
@@ -142,51 +167,8 @@ const CurtainTransition = forwardRef<CurtainHandle, Props>(function CurtainTrans
 
       {phase !== "idle" && (
         <div className="fixed inset-0 z-[9999] pointer-events-none flex overflow-hidden">
-          {/* Left curtain */}
-          <div
-            className="relative flex-1 h-full overflow-hidden"
-            style={{
-              background:
-                "linear-gradient(to right, #4a0000 0%, #7a0000 30%, #b01a1a 70%, #e5373a 100%)",
-              transform: isOffScreen ? "translateX(-100%)" : "translateX(0)",
-              transition: hasTransition
-                ? `transform ${isOffScreen ? "1.4s" : "1.5s"} cubic-bezier(0.7,0,0.3,1)`
-                : "none",
-              boxShadow: isOffScreen ? "none" : "4px 0 28px rgba(0,0,0,0.7)",
-            }}
-          >
-            <CurtainFolds side="left" />
-            <div
-              className="absolute top-0 left-0 right-0 h-8"
-              style={{
-                background:
-                  "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent)",
-              }}
-            />
-          </div>
-
-          {/* Right curtain */}
-          <div
-            className="relative flex-1 h-full overflow-hidden"
-            style={{
-              background:
-                "linear-gradient(to left, #4a0000 0%, #7a0000 30%, #b01a1a 70%, #e5373a 100%)",
-              transform: isOffScreen ? "translateX(100%)" : "translateX(0)",
-              transition: hasTransition
-                ? `transform ${isOffScreen ? "1.4s" : "1.5s"} cubic-bezier(0.7,0,0.3,1)`
-                : "none",
-              boxShadow: isOffScreen ? "none" : "-4px 0 28px rgba(0,0,0,0.7)",
-            }}
-          >
-            <CurtainFolds side="right" />
-            <div
-              className="absolute top-0 left-0 right-0 h-8"
-              style={{
-                background:
-                  "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent)",
-              }}
-            />
-          </div>
+          <Curtain side="left" isOffScreen={isOffScreen} hasTransition={hasTransition} />
+          <Curtain side="right" isOffScreen={isOffScreen} hasTransition={hasTransition} />
 
           {/* Gold seam */}
           <div
@@ -239,6 +221,4 @@ const CurtainTransition = forwardRef<CurtainHandle, Props>(function CurtainTrans
       )}
     </>
   );
-});
-
-export default CurtainTransition;
+}
