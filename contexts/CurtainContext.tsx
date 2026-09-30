@@ -179,19 +179,19 @@ export function CurtainProvider({ children }: { children: ReactNode }) {
               }}
             >
               <div
-                className="text-7xl font-black tracking-widest mb-2"
+                className="text-5xl font-black tracking-wider mb-3 sm:text-7xl"
                 style={{
                   textShadow:
                     "0 2px 32px rgba(0,0,0,1), 0 0 60px rgba(229,55,58,0.5)",
                 }}
               >
-                映
+                ふらっと
               </div>
               <div
-                className="text-xs font-bold"
-                style={{ opacity: 0.75, letterSpacing: "0.3em" }}
+                className="text-sm font-bold sm:text-base"
+                style={{ opacity: 0.8, letterSpacing: "0.6em", textIndent: "0.6em" }}
               >
-                映画時間
+                シネマ
               </div>
             </div>
           </div>

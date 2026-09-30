@@ -20,7 +20,9 @@ interface FavoritesContextType {
 }
 
 const FavoritesContext = createContext<FavoritesContextType | null>(null);
-const STORAGE_KEY = "eigazikan_favorites";
+const STORAGE_KEY = "furatto-cinema_favorites";
+// 旧アプリ名（映画時間 / eigazikan）時代の保存キー。初回読み込み時に新しいキーへ移す
+const LEGACY_STORAGE_KEY = "eigazikan_favorites";
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<Cinema[]>([]);
@@ -28,8 +30,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
       if (stored) setFavorites(JSON.parse(stored));
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
     } catch {
       // ignore
     }

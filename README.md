@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ふらっとシネマ
 
-## Getting Started
+思い立ったらすぐ映画へ。現在地から近くの映画館と、これから始まる上映を探せる Web アプリです。
 
-First, run the development server:
+- **今すぐ観る**: 周辺5km圏内で、これから始まる上映を開始時刻順に表示
+- **周辺の映画館**: 5 / 10 / 15km 圏内の映画館と、各館の上映スケジュール
+- **お気に入り**: よく行く映画館を保存
+
+映画館と上映スケジュールは [映画.com](https://eiga.com) の掲載情報をもとにしています。映画館の場所・写真は Google Places API から取得します。
+
+## 開発
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+http://localhost:3000 で起動します。`.env.local` に次の環境変数が必要です。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+GOOGLE_PLACES_API_KEY=...
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+編集したのに画面の一部が古いまま、ハイドレーションエラーが出る、といったときは `.next` を消して起動し直してください。
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+rm -rf .next && npm run dev
+```

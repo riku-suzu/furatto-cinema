@@ -6,8 +6,8 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 
 export const metadata: Metadata = {
-  title: "映画時間 - 周辺映画館の上映スケジュール",
-  description: "現在地から周辺の映画館を検索し、上映スケジュールを確認できます。",
+  title: "ふらっとシネマ - 今から観られる映画を近くの映画館から",
+  description: "思い立ったらすぐ映画へ。現在地から近くの映画館と、これから始まる上映を探せます。",
 };
 
 export default function RootLayout({

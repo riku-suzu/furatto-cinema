@@ -7,7 +7,7 @@ export default function Header() {
       <div className="max-w-6xl mx-auto px-5 h-14 flex items-center">
         <Link href="/" className="flex items-center gap-2 text-primary transition-opacity hover:opacity-80">
           <Clapperboard className="size-5" />
-          <span className="font-black text-lg tracking-tight">映画時間</span>
+          <span className="font-black text-lg tracking-tight">ふらっとシネマ</span>
         </Link>
       </div>
     </header>
