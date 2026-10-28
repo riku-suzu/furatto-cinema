@@ -1,6 +1,6 @@
 // Client-side wrappers around our own API routes.
 
-import { Cinema, Coordinates, NearbyScreening, Screening } from "@/types";
+import { Cinema, Coordinates, NearbyScreening, TheaterSchedules } from "@/types";
 
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -34,8 +34,6 @@ export async function fetchCinema(id: string): Promise<Cinema> {
 }
 
 /** 1館分の、eiga.comに載っている全日付のスケジュール */
-export async function fetchSchedules(
-  cinemaId: string
-): Promise<{ dates: string[]; schedules: Record<string, Screening[]> }> {
+export async function fetchSchedules(cinemaId: string): Promise<TheaterSchedules> {
   return getJson(`/api/schedule?${new URLSearchParams({ id: cinemaId })}`);
 }

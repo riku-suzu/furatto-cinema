@@ -6,7 +6,8 @@ import { CalendarX, ChevronRight, ExternalLink } from "lucide-react";
 import { fetchCinema, fetchSchedules } from "@/lib/api";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { addDays, dateParts, todayJst } from "@/lib/time";
-import { Cinema, Screening } from "@/types";
+import { Cinema, Screening, TheaterSchedules } from "@/types";
+import { isTheaterId } from "@/lib/theaterId";
 import BackLink from "@/components/BackLink";
 import CinemaHero from "@/components/CinemaHero";
 import EmptyState from "@/components/EmptyState";
@@ -20,14 +21,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface PageProps {
   params: Promise<{ id: string }>;
 }
-
-interface Schedules {
-  dates: string[];
-  schedules: Record<string, Screening[]>;
-}
-
-/** eiga.comの館ID（"13-130201-3263"）か。旧形式のGoogle place_idでなければtrue */
-const isTheaterId = (id: string) => /^\d{1,2}-\d+-\d+$/.test(id);
 
 /** "2026-09-29" → "今日 9/29" / "明日 9/30" / "木 10/1" */
 function dateLabel(date: string): string {
@@ -60,7 +53,7 @@ export default function CinemaDetailPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // 全日付分をまとめて1回だけ取得し、日付の切り替えは手元で行う
-  const [schedules, setSchedules] = useState<Schedules | null>(null);
+  const [schedules, setSchedules] = useState<TheaterSchedules | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(todayJst);
 
