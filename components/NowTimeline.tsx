@@ -1,15 +1,7 @@
 import { Clock, MapPin } from "lucide-react";
 import { NearbyScreening } from "@/types";
-import { formatDistance } from "@/lib/geo";
-import { minutesUntilJst } from "@/lib/time";
+import { formatDistance, formatStartsIn } from "@/lib/format";
 import { BookingButton, LanguageBadge } from "./ScreeningBadges";
-
-function startsInLabel(time: string): string | null {
-  const min = minutesUntilJst(time);
-  if (min < 0) return null;
-  if (min < 60) return `あと${min}分`;
-  return `あと${Math.floor(min / 60)}時間${min % 60 ? `${min % 60}分` : ""}`;
-}
 
 /** 開始時刻ごとにまとめる（入力は開始時刻順） */
 function groupByStartTime(screenings: NearbyScreening[]) {
@@ -65,7 +57,7 @@ export default function NowTimeline({ screenings }: { screenings: NearbyScreenin
     <ol>
       {groupByStartTime(screenings).map((group, gi) => {
         const next = gi === 0;
-        const label = startsInLabel(group.time);
+        const label = formatStartsIn(group.time);
         return (
           <li
             key={group.time}

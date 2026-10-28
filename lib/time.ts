@@ -25,14 +25,13 @@ export function addDays(date: string, days: number): string {
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
-/** "YYYY-MM-DD" → { month: 3, day: 20, weekday: "金", dayOfWeek: 5 } */
+/** "YYYY-MM-DD" → { month: 3, day: 20, weekday: "金" } */
 export function dateParts(date: string) {
   const d = new Date(`${date}T00:00:00Z`);
   return {
     month: d.getUTCMonth() + 1,
     day: d.getUTCDate(),
     weekday: WEEKDAYS[d.getUTCDay()],
-    dayOfWeek: d.getUTCDay(),
   };
 }
 

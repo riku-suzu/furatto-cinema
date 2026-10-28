@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { CalendarX, ChevronRight, ExternalLink } from "lucide-react";
 import { fetchCinema, fetchSchedules } from "@/lib/api";
 import { useFavorites } from "@/contexts/FavoritesContext";
-import { addDays, dateParts, todayJst } from "@/lib/time";
+import { todayJst } from "@/lib/time";
+import { formatDateLabel } from "@/lib/format";
 import { Cinema, Screening, TheaterSchedules } from "@/types";
 import { isTheaterId } from "@/lib/theaterId";
 import BackLink from "@/components/BackLink";
@@ -20,14 +21,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
-}
-
-/** "2026-09-29" → "今日 9/29" / "明日 9/30" / "木 10/1" */
-function dateLabel(date: string): string {
-  const { month, day, weekday } = dateParts(date);
-  const today = todayJst();
-  const prefix = date === today ? "今日" : date === addDays(today, 1) ? "明日" : weekday;
-  return `${prefix} ${month}/${day}`;
 }
 
 /** まだ観られる回（終了・満席でない回）があるか */
@@ -139,7 +132,7 @@ export default function CinemaDetailPage({ params }: PageProps) {
       {dates.length > 0 && (
         <div className="-mx-5 animate-rise overflow-x-auto px-5 pb-1 scrollbar-hide motion-reduce:animate-none" style={{ animationDelay: "120ms" }}>
           <SegmentedControl
-            options={dates.map((d) => ({ value: d, label: dateLabel(d) }))}
+            options={dates.map((d) => ({ value: d, label: formatDateLabel(d) }))}
             value={activeDate}
             onChange={setSelectedDate}
             label="日付"
@@ -190,7 +183,7 @@ export default function CinemaDetailPage({ params }: PageProps) {
               <CalendarX className="size-6 text-muted-foreground" />
               <p className="font-bold">この日の上映はすべて終了しました</p>
               <Button onClick={() => setSelectedDate(nextDate)} className="h-10 rounded-full px-5 font-bold">
-                {dateLabel(nextDate)}のスケジュールを見る
+                {formatDateLabel(nextDate)}のスケジュールを見る
                 <ChevronRight />
               </Button>
             </div>

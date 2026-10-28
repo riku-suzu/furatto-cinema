@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight, Clapperboard, MapPin } from "lucide-react";
 import { Cinema } from "@/types";
-import { formatDistance } from "@/lib/geo";
+import { formatDistance } from "@/lib/format";
 import FavoriteButton from "./FavoriteButton";
 
 export default function CinemaCard({ cinema }: { cinema: Cinema }) {
