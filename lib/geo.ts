@@ -12,11 +12,6 @@ export function calculateDistance(a: Coordinates, b: Coordinates): number {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-/** 0.35 → "350m", 2.34 → "2.3km" */
-export function formatDistance(km: number): string {
-  return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`;
-}
-
 /** クエリの lat/lng を読む。不正なら null */
 export function parseCoords(params: URLSearchParams): Coordinates | null {
   const lat = Number(params.get("lat"));

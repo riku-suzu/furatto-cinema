@@ -1,38 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Clapperboard } from "lucide-react";
 import { useLocation, useResolvedCoords } from "@/contexts/LocationContext";
-import { fetchNearbyScreenings } from "@/lib/api";
+import { useNearbyScreenings } from "@/hooks/useNearbyScreenings";
 import { NOW_RADIUS_METERS } from "@/lib/constants";
 import BackLink from "@/components/BackLink";
 import EmptyState from "@/components/EmptyState";
 import ErrorBanner from "@/components/ErrorBanner";
 import LocationPrompt from "@/components/LocationPrompt";
-import NowTimeline from "@/components/NowTimeline";
+import NowTimeline, { NowTimelineSkeleton } from "@/components/NowTimeline";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { NearbyScreening } from "@/types";
 
 export default function NowPlayingPage() {
   const { loading: locLoading } = useLocation();
   const coords = useResolvedCoords();
-  const [screenings, setScreenings] = useState<NearbyScreening[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!coords) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    fetchNearbyScreenings(coords)
-      .then((result) => { if (!cancelled) setScreenings(result); })
-      .catch(() => { if (!cancelled) setError("上映情報の取得に失敗しました。しばらくしてから再試行してください。"); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [coords]);
+  const { screenings, loading, error } = useNearbyScreenings(coords);
 
   const hasCoords = coords !== null;
   const busy = loading || locLoading;
@@ -52,16 +35,7 @@ export default function NowPlayingPage() {
         <LocationPrompt description="今から観れる映画を探すために現在地を取得します" />
       )}
 
-      {busy && hasCoords && (
-        <div className="space-y-6">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="space-y-3 sm:grid sm:grid-cols-[6rem_1fr] sm:gap-x-6 sm:space-y-0">
-              <Skeleton className="mt-4 h-6 w-16 bg-card sm:ml-auto" />
-              <Skeleton className="h-24 rounded-2xl bg-card" />
-            </div>
-          ))}
-        </div>
-      )}
+      {busy && hasCoords && <NowTimelineSkeleton />}
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 

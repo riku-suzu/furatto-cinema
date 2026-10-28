@@ -1,15 +1,8 @@
 import "server-only";
 
 import { Cinema, Coordinates } from "@/types";
-import {
-  EigaTheater,
-  PREF_NAMES,
-  findTheaterByName,
-  getNearbyPrefCodes,
-  getPrefCodeFromAddress,
-  getTheaterById,
-  getTheatersByPref,
-} from "@/lib/eigaCom";
+import { EIGA_BASE, EigaTheater, findTheaterByName, getTheaterById, getTheatersByPref } from "@/lib/eigaCom";
+import { PREF_NAMES, getNearbyPrefCodes, getPrefCodeFromAddress } from "@/lib/prefectures";
 import { findPlace, getPlaceDetails } from "@/lib/placesApi";
 import { PlaceResult, cleanAddress, photoUrl } from "@/lib/places";
 import { calculateDistance } from "@/lib/geo";
@@ -53,6 +46,11 @@ async function locateTheater(theater: EigaTheater): Promise<PlaceResult | null> 
   }
 }
 
+/** APIで返す形（eiga.comのパスはサーバー内部でだけ使う） */
+export function toPublicCinema({ eigaPath: _, ...cinema }: TrackedCinema): Cinema {
+  return cinema;
+}
+
 function toTrackedCinema(theater: EigaTheater, place: PlaceResult): TrackedCinema {
   return {
     id: theater.id,
@@ -63,7 +61,7 @@ function toTrackedCinema(theater: EigaTheater, place: PlaceResult): TrackedCinem
     photoUrl: photoUrl(place),
     movieCount: theater.movieCount,
     eigaPath: theater.url,
-    eigaUrl: `https://eiga.com${theater.url}`,
+    eigaUrl: `${EIGA_BASE}${theater.url}`,
   };
 }
 

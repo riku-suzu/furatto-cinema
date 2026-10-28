@@ -1,15 +1,8 @@
 import { Clock, MapPin } from "lucide-react";
 import { NearbyScreening } from "@/types";
-import { formatDistance } from "@/lib/geo";
-import { minutesUntilJst } from "@/lib/time";
+import { formatDistance, formatStartsIn } from "@/lib/format";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BookingButton, LanguageBadge } from "./ScreeningBadges";
-
-function startsInLabel(time: string): string | null {
-  const min = minutesUntilJst(time);
-  if (min < 0) return null;
-  if (min < 60) return `あと${min}分`;
-  return `あと${Math.floor(min / 60)}時間${min % 60 ? `${min % 60}分` : ""}`;
-}
 
 /** 開始時刻ごとにまとめる（入力は開始時刻順） */
 function groupByStartTime(screenings: NearbyScreening[]) {
@@ -65,7 +58,7 @@ export default function NowTimeline({ screenings }: { screenings: NearbyScreenin
     <ol>
       {groupByStartTime(screenings).map((group, gi) => {
         const next = gi === 0;
-        const label = startsInLabel(group.time);
+        const label = formatStartsIn(group.time);
         return (
           <li
             key={group.time}
@@ -99,5 +92,18 @@ export default function NowTimeline({ screenings }: { screenings: NearbyScreenin
         );
       })}
     </ol>
+  );
+}
+
+export function NowTimelineSkeleton() {
+  return (
+    <div className="space-y-6">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="space-y-3 sm:grid sm:grid-cols-[6rem_1fr] sm:gap-x-6 sm:space-y-0">
+          <Skeleton className="mt-4 h-6 w-16 bg-card sm:ml-auto" />
+          <Skeleton className="h-24 rounded-2xl bg-card" />
+        </div>
+      ))}
+    </div>
   );
 }

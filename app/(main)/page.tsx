@@ -1,93 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { ChevronRight, Loader2, MapPin, Star, Ticket } from "lucide-react";
-import { useLocation } from "@/contexts/LocationContext";
-import { useFavorites } from "@/contexts/FavoritesContext";
-import { useCurtain } from "@/contexts/CurtainContext";
-import FavoriteButton from "@/components/FavoriteButton";
+import { ComponentProps, ReactNode } from "react";
+import { ChevronRight, Loader2, MapPin, Ticket } from "lucide-react";
+import { useLocationGatedNavigation } from "@/hooks/useLocationGatedNavigation";
 import ErrorBanner from "@/components/ErrorBanner";
+import FavoriteCinemaList from "@/components/FavoriteCinemaList";
+import HeroBackdrop from "@/components/HeroBackdrop";
 import { Button } from "@/components/ui/button";
-import { fetchNearbyCinemas } from "@/lib/api";
 import { NOW_RADIUS_METERS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
-type Destination = "now" | "cinemas";
-
-const HREF: Record<Destination, string> = { now: "/now", cinemas: "/cinemas" };
-
 export default function TopPage() {
-  const { coords, loading, error, requestLocation } = useLocation();
-  const { navigate } = useCurtain();
-  // 位置情報の取得待ちの間に押された遷移先
-  const pendingRef = useRef<Destination | null>(null);
-  const [pendingLabel, setPendingLabel] = useState<Destination | null>(null);
-  // null = unknown/checking, otherwise the count of cinemas found within NOW_RADIUS_METERS
-  const [nearbyCount, setNearbyCount] = useState<number | null>(null);
-
-  // Whenever we get coords, check whether any (eiga.com-listed) cinema is within
-  // the "now" radius at all, so the button can be disabled when there's none.
-  useEffect(() => {
-    setNearbyCount(null);
-    if (!coords) return;
-    let cancelled = false;
-    fetchNearbyCinemas(coords, NOW_RADIUS_METERS)
-      .then((cinemas) => { if (!cancelled) setNearbyCount(cinemas.length); })
-      .catch(() => { if (!cancelled) setNearbyCount(0); });
-    return () => { cancelled = true; };
-  }, [coords]);
-
-  // 位置情報の取得待ちだった遷移を、必要なものが揃ったら実行する。
-  // "cinemas" は座標だけ、"now" は近くに映画館があるかの確認結果も待つ。
-  useEffect(() => {
-    const target = pendingRef.current;
-    if (!coords || !target) return;
-    if (target === "now" && nearbyCount === null) return; // still checking
-    pendingRef.current = null;
-    setPendingLabel(null);
-    // nearbyCount === 0: stay put, button will render as disabled with a note
-    if (target === "cinemas" || nearbyCount! > 0) navigate(HREF[target]);
-  }, [coords, nearbyCount, navigate]);
-
-  const nowDisabled = coords !== null && nearbyCount === 0;
-
-  const choose = (destination: Destination) => {
-    if (destination === "now" && nowDisabled) return;
-    if (coords && !(destination === "now" && nearbyCount === null)) {
-      navigate(HREF[destination]);
-      return;
-    }
-    if (pendingRef.current) return; // already waiting
-    pendingRef.current = destination;
-    setPendingLabel(destination);
-    if (!coords && !loading) requestLocation();
-  };
-
-  // 位置情報の取得に失敗したら待機を解除する
-  useEffect(() => {
-    if (error) {
-      pendingRef.current = null;
-      setPendingLabel(null);
-    }
-  }, [error]);
+  const { choose, pending, nowDisabled, locating, error } = useLocationGatedNavigation();
 
   return (
     <div>
       {/* ── Hero ── */}
       <section className="relative min-h-[75vh] flex flex-col items-center justify-center text-center overflow-hidden -mx-5 -mt-8 px-5">
 
-        {/* Cinematic background */}
-        <div className="absolute inset-0 bg-background" />
-        <div className="absolute inset-0" style={{
-          background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(229,55,58,0.14) 0%, transparent 70%)"
-        }} />
-        {/* Subtle grid lines */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-          maskImage: "radial-gradient(ellipse 70% 60% at 50% 45%, black 30%, transparent 80%)",
-        }} />
+        <HeroBackdrop />
 
         {/* Content */}
         <div className="relative z-10 max-w-2xl mx-auto space-y-8">
@@ -108,7 +39,9 @@ export default function TopPage() {
           </div>
 
           <div className="flex flex-col items-center gap-3">
-            <Button
+            <PendingButton
+              pending={pending === "now"}
+              pendingText={locating ? "位置情報を取得中..." : "近くの映画館を確認中..."}
               size="lg"
               onClick={() => choose("now")}
               aria-disabled={nowDisabled}
@@ -117,42 +50,26 @@ export default function TopPage() {
                 nowDisabled && "opacity-40 cursor-not-allowed hover:shadow-[0_0_40px_rgba(229,55,58,0.35)]"
               )}
             >
-              {pendingLabel === "now" ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  {loading ? "位置情報を取得中..." : "近くの映画館を確認中..."}
-                </>
-              ) : (
-                <>
-                  <Ticket />
-                  今すぐ観れる映画を見る
-                  <ChevronRight />
-                </>
-              )}
-            </Button>
+              <Ticket />
+              今すぐ観れる映画を見る
+              <ChevronRight />
+            </PendingButton>
             {nowDisabled && (
               <ErrorBanner className="w-auto">
                 現在地から{NOW_RADIUS_METERS / 1000}km圏内に映画館が見つかりませんでした
               </ErrorBanner>
             )}
-            <Button
+            <PendingButton
+              pending={pending === "cinemas"}
+              pendingText="位置情報を取得中..."
               variant="outline"
               size="lg"
               onClick={() => choose("cinemas")}
               className="h-14 gap-2.5 rounded-full px-9 text-lg font-bold [&_svg:not([class*='size-'])]:size-5"
             >
-              {pendingLabel === "cinemas" ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  位置情報を取得中...
-                </>
-              ) : (
-                <>
-                  <MapPin />
-                  周辺の映画館を見る
-                </>
-              )}
-            </Button>
+              <MapPin />
+              周辺の映画館を見る
+            </PendingButton>
             {error && <ErrorBanner className="w-auto">{error}</ErrorBanner>}
           </div>
         </div>
@@ -161,38 +78,28 @@ export default function TopPage() {
         <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none bg-gradient-to-b from-transparent to-background" />
       </section>
 
-      <FavoritesSection />
+      <FavoriteCinemaList />
     </div>
   );
 }
 
-function FavoritesSection() {
-  const { favorites } = useFavorites();
-  if (favorites.length === 0) return null;
-
+/** 待機中はスピナーと pendingText に表示を切り替えるボタン */
+function PendingButton({
+  pending,
+  pendingText,
+  children,
+  ...props
+}: ComponentProps<typeof Button> & { pending: boolean; pendingText: string; children: ReactNode }) {
   return (
-    <section className="mt-16 space-y-4">
-      <h2 className="text-xs font-bold tracking-[0.25em] uppercase flex items-center gap-2 text-muted-foreground">
-        <Star className="size-3.5 fill-gold text-gold" /> お気に入り
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {favorites.map((cinema) => (
-          <Link
-            key={cinema.id}
-            href={`/cinemas/${cinema.id}`}
-            className="group flex items-center justify-between gap-3 rounded-xl border bg-card p-4 transition-all hover:border-primary/40"
-          >
-            <div className="min-w-0">
-              <p className="font-semibold truncate transition-colors group-hover:text-primary">{cinema.name}</p>
-              <p className="text-xs truncate mt-0.5 text-muted-foreground">{cinema.address}</p>
-            </div>
-            <div className="flex flex-shrink-0 items-center gap-1">
-              <FavoriteButton cinema={cinema} className="bg-transparent" />
-              <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
+    <Button {...props}>
+      {pending ? (
+        <>
+          <Loader2 className="animate-spin" />
+          {pendingText}
+        </>
+      ) : (
+        children
+      )}
+    </Button>
   );
 }
