@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { scrapeSchedule } from "@/lib/eigaCom";
-import { findNearbyTheaters } from "@/lib/theaterDirectory";
+import { TrackedCinema, findNearbyTheaters, toPublicCinema } from "@/lib/theaterDirectory";
 import { parseCoords } from "@/lib/geo";
+import { errorMessage, jsonError } from "@/lib/http";
+import { isBookableNow } from "@/lib/screenings";
 import { compareTime, todayJst } from "@/lib/time";
 import { NOW_RADIUS_METERS } from "@/lib/constants";
 import { NearbyScreening } from "@/types";
@@ -16,38 +18,33 @@ const MAX_RESULTS = 50;
 // 開始時刻の早い順にフラットなリストで返す。
 export async function GET(req: NextRequest) {
   const coords = parseCoords(req.nextUrl.searchParams);
-  if (!coords) {
-    return NextResponse.json({ error: "lat/lng is required" }, { status: 400 });
-  }
+  if (!coords) return jsonError("lat/lng is required", 400);
 
-  let cinemas;
+  let theaters: TrackedCinema[];
   try {
-    cinemas = await findNearbyTheaters(coords, NOW_RADIUS_METERS);
+    theaters = await findNearbyTheaters(coords, NOW_RADIUS_METERS);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "映画館の取得に失敗しました";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return jsonError(errorMessage(err, "映画館の取得に失敗しました"), 502);
   }
 
   const today = todayJst();
-  const results = await Promise.all(
-    cinemas.map(async ({ eigaPath, ...cinema }) => {
-      try {
-        const screenings = await scrapeSchedule(eigaPath, today);
-        return screenings
-          .filter((s) => !!s.ticketUrl && !s.isPast && s.availableSeats !== 0)
-          .map((s): NearbyScreening => ({ ...s, cinema }));
-      } catch {
-        return [];
-      }
-    })
-  );
-
-  const flat = results.flat();
-  flat.sort(
+  const screenings = (await Promise.all(theaters.map((t) => bookableScreenings(t, today)))).flat();
+  screenings.sort(
     (a, b) =>
       compareTime(a.startTime, b.startTime) ||
       (a.cinema.distance ?? 0) - (b.cinema.distance ?? 0)
   );
 
-  return NextResponse.json({ screenings: flat.slice(0, MAX_RESULTS) });
+  return NextResponse.json({ screenings: screenings.slice(0, MAX_RESULTS) });
+}
+
+/** 1館分の、指定日のまだ購入できる上映（取得に失敗した館は空） */
+async function bookableScreenings(theater: TrackedCinema, date: string): Promise<NearbyScreening[]> {
+  const cinema = toPublicCinema(theater);
+  try {
+    const screenings = await scrapeSchedule(theater.eigaPath, date);
+    return screenings.filter(isBookableNow).map((s) => ({ ...s, cinema }));
+  } catch {
+    return [];
+  }
 }

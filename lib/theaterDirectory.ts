@@ -46,6 +46,11 @@ async function locateTheater(theater: EigaTheater): Promise<PlaceResult | null> 
   }
 }
 
+/** APIで返す形（eiga.comのパスはサーバー内部でだけ使う） */
+export function toPublicCinema({ eigaPath: _, ...cinema }: TrackedCinema): Cinema {
+  return cinema;
+}
+
 function toTrackedCinema(theater: EigaTheater, place: PlaceResult): TrackedCinema {
   return {
     id: theater.id,
