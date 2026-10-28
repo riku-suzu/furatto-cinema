@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { scrapeSchedules, theaterPathFromId } from "@/lib/eigaCom";
+import { scrapeSchedules } from "@/lib/eigaCom";
+import { theaterPathFromId } from "@/lib/theaterId";
 
 export const preferredRegion = "hnd1"; // Tokyo — eiga.com requires JP IP
 
