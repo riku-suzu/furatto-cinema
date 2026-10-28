@@ -11,6 +11,8 @@ export async function GET(req: NextRequest) {
     photoreference: ref,
   });
   const res = await fetch(url, { redirect: "follow" });
+  // Places APIのエラー（キーの制限・無効な参照など）を画像として1日キャッシュさせない
+  if (!res.ok) return new NextResponse(null, { status: 502 });
 
   return new NextResponse(await res.arrayBuffer(), {
     headers: {
