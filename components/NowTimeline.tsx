@@ -1,6 +1,7 @@
 import { Clock, MapPin } from "lucide-react";
 import { NearbyScreening } from "@/types";
 import { formatDistance, formatStartsIn } from "@/lib/format";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BookingButton, LanguageBadge } from "./ScreeningBadges";
 
 /** 開始時刻ごとにまとめる（入力は開始時刻順） */
@@ -91,5 +92,18 @@ export default function NowTimeline({ screenings }: { screenings: NearbyScreenin
         );
       })}
     </ol>
+  );
+}
+
+export function NowTimelineSkeleton() {
+  return (
+    <div className="space-y-6">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="space-y-3 sm:grid sm:grid-cols-[6rem_1fr] sm:gap-x-6 sm:space-y-0">
+          <Skeleton className="mt-4 h-6 w-16 bg-card sm:ml-auto" />
+          <Skeleton className="h-24 rounded-2xl bg-card" />
+        </div>
+      ))}
+    </div>
   );
 }
