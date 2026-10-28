@@ -36,3 +36,9 @@ export interface Coordinates {
 export interface NearbyScreening extends Screening {
   cinema: Cinema;
 }
+
+/** 1館分の、映画館ページに載っている日付ごとのスケジュール */
+export interface TheaterSchedules {
+  dates: string[]; // "YYYY-MM-DD"、昇順
+  schedules: Record<string, Screening[]>;
+}
